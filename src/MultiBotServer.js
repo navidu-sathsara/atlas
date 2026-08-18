@@ -1688,6 +1688,114 @@ async function handleHttp(req, res, state) {
         return json(res, 200, { bots: visible.map(b => publicBot(b, user)) });
     }
 
+    // ── Batch Bot Generator with Round-Robin Proxy Allocation ───
+    if (req.method === 'POST' && p === '/api/bots/generate') {
+        const user = currentUser(req);
+        const body = await readJson(req);
+        const quantity = Math.min(100, Math.max(1, parseInt(body.quantity) || 1));
+        const host = (body.host || 'play.bananasmp.net').trim();
+        const port = parseInt(body.port) || 25565;
+        const version = body.version || '1.20.1';
+        const auth = body.auth || 'offline';
+        const category = (body.category && String(body.category).trim()) || 'Uncategorized';
+        const autoReconnect = body.autoReconnect !== false;
+        const reconnectDelay = parseInt(body.reconnectDelay) || 5000;
+        const afkMode = body.afkMode !== false;
+        const autoRegister = body.autoRegister === true;
+        const autoLogin = body.autoLogin === true;
+        const loginPassword = (body.loginPassword && String(body.loginPassword).trim()) || null;
+
+        // Owner determination
+        let ownerId = user.id;
+        if (user.role === 'admin' && body.ownerId) {
+            if (users.findById(body.ownerId)) ownerId = body.ownerId;
+        }
+
+        // Available proxies pool for Round-Robin distribution
+        let availableProxies = [];
+        if (body.useProxies) {
+            const allProxies = proxies.list();
+            if (user.role === 'admin') {
+                availableProxies = allProxies;
+            } else {
+                availableProxies = allProxies.filter(pr => proxies.canAccess(user, pr));
+            }
+        }
+
+        // Username generation strategy
+        const usernames = [];
+        if (Array.isArray(body.customUsernames) && body.customUsernames.length > 0) {
+            for (let i = 0; i < quantity; i++) {
+                usernames.push(body.customUsernames[i] || `bot_${i + 1}`);
+            }
+        } else {
+            // Sequential prefix e.g. bot_1, bot_2, ...
+            const prefix = (body.prefix || 'bot_').trim();
+            const startNum = parseInt(body.startNumber) || 1;
+            for (let i = 0; i < quantity; i++) {
+                usernames.push(`${prefix}${startNum + i}`);
+            }
+        }
+
+        const existingIds = new Set(state.bots.map(b => b.id));
+        let idCounter = 1;
+        const getNextUniqueId = () => {
+            while (existingIds.has(`bot-${idCounter}`)) idCounter++;
+            const id = `bot-${idCounter}`;
+            existingIds.add(id);
+            return id;
+        };
+
+        const createdBots = [];
+        for (let i = 0; i < quantity; i++) {
+            const id = getNextUniqueId();
+            const username = usernames[i] || id;
+
+            // Round-robin proxy allocation: (i % availableProxies.length)
+            let proxyUri = null;
+            if (availableProxies.length > 0) {
+                const assignedProxy = availableProxies[i % availableProxies.length];
+                proxyUri = proxyToUri(assignedProxy);
+            }
+
+            const config = {
+                host,
+                port,
+                username,
+                version,
+                auth,
+                autoReconnect,
+                reconnectDelay,
+                afkMode,
+                proxy: proxyUri,
+                discord: { enabled: false, token: '', guildId: '' },
+                boneCollector: { collectSlot: 13, cycleDelay: 15000 },
+                webhookUrl: '',
+                autoRegister,
+                autoLogin,
+                loginPassword,
+                category,
+                colors: { theme: 'green' }
+            };
+
+            const bot = { id, ownerId, config };
+            state.bots.push(bot);
+            createdBots.push(bot);
+        }
+
+        saveBotsFile(state);
+        for (const bot of createdBots) {
+            broadcastGlobal(viewer => ({ type: 'bot-added', bot: publicBot(bot, viewer) }), state);
+        }
+
+        return json(res, 200, {
+            ok: true,
+            count: createdBots.length,
+            proxiesUsed: availableProxies.length,
+            bots: createdBots.map(b => publicBot(b, user))
+        });
+    }
+
     if (req.method === 'POST' && p === '/api/bots') {
         const user = currentUser(req);
         const body = await readJson(req);

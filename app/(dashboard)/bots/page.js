@@ -29,12 +29,14 @@ import {
   Trash2,
   UserRound,
   X,
+  Zap,
 } from 'lucide-react';
 import { useDashboard } from '@/components/dashboard-provider';
 import { useAuth, useToast } from '@/components/providers';
 import { BotConsole } from '@/components/bot-console';
 import { BotConsoleTile } from '@/components/bot-console-tile';
 import { UsernameStudioModal } from '@/components/username-studio-modal';
+import { BatchBotGeneratorModal } from '@/components/batch-bot-generator-modal';
 import { Button, Checkbox, EmptyState, Modal, PageHeader, Panel, Spinner, StatusBadge, Tabs } from '@/components/ui';
 import { api, cn } from '@/lib/api';
 import { botLabel, categoryOf, proxyLabel } from '@/lib/format';
@@ -66,6 +68,7 @@ export default function BotsPage() {
   const [tab, setTab] = useState('console');
   const [deployOpen, setDeployOpen] = useState(false);
   const [nameStudioOpen, setNameStudioOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [deploy, setDeploy] = useState(defaultDeploy);
   const [submitting, setSubmitting] = useState(false);
   const [busy, setBusy] = useState('');
@@ -248,6 +251,9 @@ export default function BotsPage() {
 
             <Button size="sm" onClick={() => refreshBots()}>
               <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            </Button>
+            <Button size="sm" onClick={() => setBatchOpen(true)} className="border-white/20 bg-white/[0.12] text-white hover:bg-white/[0.22] shadow-sm">
+              <Zap className="h-3.5 w-3.5 text-white" /> Generate Bots
             </Button>
             <Button size="sm" onClick={() => setNameStudioOpen(true)} className="border-white/15 bg-white/[0.08] text-white">
               <Sparkles className="h-3.5 w-3.5 text-white" /> Name Studio
@@ -767,6 +773,13 @@ export default function BotsPage() {
           setDeploy((d) => ({ ...d, username: name }));
           setDeployOpen(true);
         }}
+      />
+
+      {/* Mass Bot Generator & Orchestrator Modal */}
+      <BatchBotGeneratorModal
+        open={batchOpen}
+        onClose={() => setBatchOpen(false)}
+        onGenerated={() => refreshBots()}
       />
     </div>
   );

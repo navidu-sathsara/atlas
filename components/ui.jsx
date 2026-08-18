@@ -148,7 +148,7 @@ export function EmptyState({ icon: Icon, title, description, action }) {
   );
 }
 
-export function Modal({ open, onClose, title, description, children, footer, wide = false }) {
+export function Modal({ open, onClose, title, description, children, footer, wide = false, size }) {
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
@@ -176,7 +176,11 @@ export function Modal({ open, onClose, title, description, children, footer, wid
         aria-labelledby="modal-title"
         className={cn(
           'anim-scale max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-t-[28px] border border-white/12 bg-[#0d0d0f]/95 shadow-[0_-20px_80px_rgba(0,0,0,0.9)] backdrop-blur-3xl sm:rounded-[24px] sm:shadow-[0_40px_120px_rgba(0,0,0,0.95)]',
-          wide ? 'max-w-3xl' : 'max-w-lg'
+          size === 'xl' || size === '4xl'
+            ? 'max-w-4xl'
+            : size === 'lg' || wide
+            ? 'max-w-3xl'
+            : 'max-w-xl'
         )}
       >
         {/* iOS Mobile Grab Handle */}
@@ -264,5 +268,30 @@ export function Checkbox({ checked, onChange, label, description, disabled }) {
         {description && <span className="mt-0.5 block text-xs leading-relaxed text-white/40">{description}</span>}
       </span>
     </label>
+  );
+}
+
+export function Switch({ checked, onChange, disabled, className }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange?.(!checked)}
+      className={cn(
+        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-50',
+        checked ? 'bg-white' : 'bg-white/20',
+        className
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out',
+          checked ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white'
+        )}
+      />
+    </button>
   );
 }
