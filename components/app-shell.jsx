@@ -108,12 +108,12 @@ function ShellFrame({ children }) {
 
   const sidebar = (
     <>
-      <div className={cn('flex h-[68px] shrink-0 items-center border-b border-white/[0.07]', collapsed ? 'justify-center px-2' : 'px-5')}>
+      <div className={cn('flex h-[68px] shrink-0 items-center border-b border-white/[0.08]', collapsed ? 'justify-center px-2' : 'px-5')}>
         <Link href="/overview" className="group flex min-w-0 items-center">
           {!collapsed && (
             <span className="min-w-0">
-              <strong className="block truncate text-[15px] font-semibold tracking-[-0.02em] text-white">BotHive</strong>
-              <small className="block truncate text-[9px] uppercase tracking-[0.18em] text-white/30">Control plane</small>
+              <strong className="block truncate text-base font-bold tracking-tight text-white">BotHive</strong>
+              <small className="block truncate text-[10px] uppercase font-bold tracking-[0.16em] text-white/50">Control plane</small>
             </span>
           )}
         </Link>
@@ -122,8 +122,8 @@ function ShellFrame({ children }) {
       <nav className="console-scrollbar flex-1 overflow-y-auto px-3 py-5">
         {groups.map((group) => (
           <div key={group} className="mb-6">
-            {!collapsed && <p className="mb-2.5 px-3 text-[9px] font-medium uppercase tracking-[0.19em] text-white/20">{group}</p>}
-            <div className="space-y-0.5">
+            {!collapsed && <p className="mb-2.5 px-3 text-[11px] font-bold uppercase tracking-[0.15em] text-white/40">{group}</p>}
+            <div className="space-y-1">
               {visibleItems.filter((item) => item.group === group).map((item) => {
                 const Icon = item.icon;
                 const current = pathname.startsWith(item.href);
@@ -134,20 +134,20 @@ function ShellFrame({ children }) {
                     href={item.href}
                     title={collapsed ? item.label : undefined}
                     className={cn(
-                      'group relative flex h-10 items-center rounded-xl text-[13px] font-medium transition-all duration-500 [transition-timing-function:var(--ease-ios)]',
-                      collapsed ? 'justify-center px-2' : 'gap-3 px-3',
-                      current ? 'bg-white/[0.09] text-white' : 'text-white/40 hover:bg-white/[0.05] hover:text-white/85'
+                      'group relative flex h-10.5 items-center rounded-xl text-[14px] font-medium transition-all duration-300',
+                      collapsed ? 'justify-center px-2' : 'gap-3 px-3.5',
+                      current ? 'bg-white/[0.12] text-white font-semibold shadow-sm' : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
                     )}
                   >
                     {current && !collapsed && (
-                      <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-full bg-white" />
+                      <span className="absolute left-0 top-1/2 h-5 w-[2.5px] -translate-y-1/2 rounded-r-full bg-white" />
                     )}
-                    <Icon className={cn('h-[17px] w-[17px] shrink-0 transition-colors', current ? 'text-white' : 'text-white/30 group-hover:text-white/70')} />
+                    <Icon className={cn('h-[18px] w-[18px] shrink-0 transition-colors', current ? 'text-white' : 'text-white/50 group-hover:text-white')} />
                     {!collapsed && (
                       <>
                         <span className="min-w-0 flex-1 truncate">{item.label}</span>
                         {badge !== null && (
-                          <span className="tnum rounded-md bg-white/[0.07] px-1.5 py-0.5 text-[10px] text-white/40">{badge}</span>
+                          <span className="tnum rounded-lg bg-white/[0.10] px-2 py-0.5 text-xs font-bold text-white/70">{badge}</span>
                         )}
                       </>
                     )}
@@ -159,20 +159,20 @@ function ShellFrame({ children }) {
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-white/[0.07] p-3">
-        <div className={cn('mb-2 flex items-center rounded-xl border border-white/[0.07] bg-white/[0.03] p-2.5', collapsed ? 'justify-center' : 'gap-3')}>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[11px] font-semibold uppercase text-white">{user.email.slice(0, 2)}</span>
+      <div className="shrink-0 border-t border-white/[0.08] p-3">
+        <div className={cn('mb-2 flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] p-2.5', collapsed ? 'justify-center' : 'gap-3')}>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-xs font-bold uppercase text-white shadow-sm">{user.email.slice(0, 2)}</span>
           {!collapsed && (
             <span className="min-w-0 flex-1">
-              <strong className="block truncate text-[12px] font-medium text-white/85">{user.email}</strong>
-              <small className="text-[9px] uppercase tracking-[0.15em] text-white/25">{user.role}</small>
+              <strong className="block truncate text-[13px] font-semibold text-white">{user.email}</strong>
+              <small className="text-[10px] uppercase font-bold tracking-wider text-white/40">{user.role}</small>
             </span>
           )}
         </div>
         <button
           onClick={handleLogout}
           title={collapsed ? 'Sign out' : undefined}
-          className={cn('flex h-9 w-full items-center rounded-xl text-[12px] font-medium text-white/35 transition-all duration-300 hover:bg-white/[0.07] hover:text-white', collapsed ? 'justify-center' : 'gap-3 px-3')}
+          className={cn('flex h-10 w-full items-center rounded-xl text-[13px] font-medium text-white/50 transition-all duration-300 hover:bg-white/[0.08] hover:text-white', collapsed ? 'justify-center' : 'gap-3 px-3')}
         >
           <LogOut className="h-4 w-4" />
           {!collapsed && 'Sign out'}
