@@ -1318,8 +1318,14 @@ async function handleHttp(req, res, state) {
 
     if (p.startsWith('/api/') && ['POST', 'PATCH', 'DELETE'].includes(req.method) && req.headers.origin) {
         try {
-            if (new URL(req.headers.origin).host !== req.headers.host) {
-                return json(res, 403, { ok: false, reason: 'Cross-origin request blocked' });
+            const originHost = new URL(req.headers.origin).host;
+            const targetHost = req.headers['x-forwarded-host'] || req.headers.host;
+            if (originHost !== targetHost && originHost !== req.headers.host) {
+                const originBase = originHost.split(':')[0];
+                const targetBase = targetHost.split(':')[0];
+                if (originBase !== targetBase && targetBase !== '127.0.0.1' && targetBase !== 'localhost') {
+                    return json(res, 403, { ok: false, reason: 'Cross-origin request blocked' });
+                }
             }
         } catch (_) { return json(res, 403, { ok: false, reason: 'Invalid request origin' }); }
     }
