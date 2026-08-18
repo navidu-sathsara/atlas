@@ -289,12 +289,12 @@ export function UsernameStudioModal({ open, onClose, onSelectUsername }) {
               onChange={(e) => setStyleEngine(e.target.value)}
               className="h-11 w-full rounded-xl border border-white/12 bg-black/60 px-3.5 text-sm font-medium text-white outline-none transition focus:border-white/40 focus:ring-1 focus:ring-white/30"
             >
-              <option value="all">🎲 All Styles Mix</option>
-              <option value="witty">🦙 Witty & Wordplay (OhLlama)</option>
-              <option value="tech">🧠 Tech & Philosophy (consensus1)</option>
-              <option value="aesthetic">☕ Minimal Aesthetic (velvet)</option>
-              <option value="corporate">💼 Corporate Satire (synergize)</option>
-              <option value="compounds">⚡ Smart Compounds (nullState)</option>
+              <option value="all">All Styles Mix</option>
+              <option value="witty">Witty & Wordplay (OhLlama)</option>
+              <option value="tech">Tech & Philosophy (consensus1)</option>
+              <option value="aesthetic">Minimal Aesthetic (velvet)</option>
+              <option value="corporate">Corporate Satire (synergize)</option>
+              <option value="compounds">Smart Compounds (nullState)</option>
             </select>
           </div>
 
@@ -454,7 +454,7 @@ export function UsernameStudioModal({ open, onClose, onSelectUsername }) {
                   : 'text-white/60 hover:text-white'
               )}
             >
-              🟢 Available ({generatedList.filter((i) => !i.isPremium).length})
+              Available ({generatedList.filter((i) => !i.isPremium).length})
             </button>
             <button
               onClick={() => setActiveFilter('premium')}
@@ -465,7 +465,7 @@ export function UsernameStudioModal({ open, onClose, onSelectUsername }) {
                   : 'text-white/60 hover:text-white'
               )}
             >
-              🔵 Premium ({generatedList.filter((i) => i.isPremium).length})
+              Premium ({generatedList.filter((i) => i.isPremium).length})
             </button>
             <button
               onClick={() => setActiveFilter('favorites')}
@@ -476,7 +476,7 @@ export function UsernameStudioModal({ open, onClose, onSelectUsername }) {
                   : 'text-white/60 hover:text-white'
               )}
             >
-              ❤️ Saved ({favorites.size})
+              Saved ({favorites.size})
             </button>
           </div>
         </div>

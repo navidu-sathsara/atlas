@@ -241,7 +241,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
       return name;
     });
     setCustomText(fixed.join('\n'));
-    toast('✨ Converted premium names to guaranteed cracked usernames!', 'success');
+    toast('Converted premium names to guaranteed cracked usernames', 'success');
   };
 
   const handleGenerate = async (e) => {
@@ -268,7 +268,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
         }),
       });
 
-      toast(`⚡ Successfully generated & deployed ${res.count || qty} bots!`, 'success');
+      toast(`Successfully generated and deployed ${res.count || qty} bots`, 'success');
       onGenerated?.(res.bots);
       onClose();
     } catch (err) {
@@ -282,8 +282,8 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="⚡ Mass Bot Generator & Fleet Orchestrator"
-      description="Deploy dozens of configured bots instantly with automated Round-Robin proxy mesh distribution, cracked auto-auth handshakes, and live Mojang Premium account checks."
+      title="Mass Bot Generator & Fleet Orchestrator"
+      description="Deploy dozens of configured bots instantly with automated Round-Robin proxy mesh distribution, cracked auto-auth handshakes, and live Mojang account verification."
       size="xl"
     >
       <form onSubmit={handleGenerate} className="space-y-6">
@@ -480,8 +480,8 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
               <div className="flex flex-wrap gap-2">
                 {[
                   { id: 'prefix', label: 'Sequential Prefix (bot_1)' },
-                  { id: 'mature', label: '✨ Mature Lexicon' },
-                  { id: 'custom', label: '📋 Paste List' },
+                  { id: 'mature', label: 'Mature Lexicon' },
+                  { id: 'custom', label: 'Paste List' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -584,9 +584,9 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                   <button
                     type="button"
                     onClick={fixCustomNamesToCracked}
-                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-black hover:bg-white/90 transition active:scale-95 shrink-0"
+                    className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-black hover:bg-white/90 transition active:scale-95 shrink-0"
                   >
-                    ✨ Fix to Cracked
+                    <Sparkles className="h-3 w-3" /> Fix to Cracked
                   </button>
                 </div>
               )}
@@ -602,7 +602,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
-                      🛡️ 100% Cracked Safe
+                      <ShieldCheck className="h-3 w-3 text-white" /> 100% Cracked Safe
                     </span>
                   )}
                 </div>
@@ -649,11 +649,11 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                             </span>
                           ) : isPremium ? (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/30 bg-white/[0.15] px-1.5 py-0.2 text-[9px] font-bold text-white shadow-sm">
-                              ⚠️ Premium
+                              Premium
                             </span>
                           ) : (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/15 bg-white/[0.06] px-1.5 py-0.2 text-[9px] font-medium text-white/70">
-                              ⭐ Cracked
+                              Cracked
                             </span>
                           )}
                         </div>

@@ -17,6 +17,8 @@ import {
   Folder,
   FolderGit2,
   FolderInput,
+  Gem,
+  Globe,
   Grid2X2,
   Grid3X3,
   KeyRound,
@@ -36,12 +38,15 @@ import {
   Server,
   Settings2,
   ShieldCheck,
+  Shuffle,
   Sparkles,
   Square,
   StopCircle,
+  Target,
   Terminal,
   Trash2,
   UserRound,
+  Users,
   X,
   Zap,
 } from 'lucide-react';
@@ -252,7 +257,7 @@ export default function BotsPage() {
           } catch (_) {}
         })
       );
-      toast(`⚡ ${count} bots ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarting'}!`, 'success');
+      toast(`${count} bots ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarting'}`, 'success');
       window.setTimeout(refreshBots, action === 'restart' ? 3000 : 1000);
     } catch (err) {
       toast(err.message, 'error');
@@ -275,7 +280,7 @@ export default function BotsPage() {
           } catch (_) {}
         })
       );
-      toast(`🗑️ Successfully deleted ${count} bots!`, 'success');
+      toast(`Successfully deleted ${count} bots`, 'success');
       if (selectedBotIds.includes(selectedId)) setSelectedId('');
       setSelectedBotIds([]);
       await refreshBots();
@@ -303,7 +308,7 @@ export default function BotsPage() {
           } catch (_) {}
         })
       );
-      toast(`🏷️ Moved ${count} bots to "${category}"!`, 'success');
+      toast(`Moved ${count} bots to "${category}"`, 'success');
       setMoveCategoryOpen(false);
       setTargetCategoryInput('');
       await refreshBots();
@@ -329,7 +334,7 @@ export default function BotsPage() {
           } catch (_) {}
         })
       );
-      toast(`⚡ ${count} bots in category ${action === 'start' ? 'started' : 'stopped'}!`, 'success');
+      toast(`${count} bots in category ${action === 'start' ? 'started' : 'stopped'}`, 'success');
       window.setTimeout(refreshBots, 1000);
     } catch (err) {
       toast(err.message, 'error');
@@ -368,7 +373,7 @@ export default function BotsPage() {
             loginPassword: deploy.autoAuth ? deploy.loginPassword : null,
           }),
         });
-        toast(`⚡ Successfully deployed ${result.count || rawNames.length} bots with Round-Robin proxy mesh!`, 'success');
+        toast(`Successfully deployed ${result.count || rawNames.length} bots with Round-Robin proxy mesh`, 'success');
       } else {
         // Single bot deployment
         let proxyIdToUse = undefined;
@@ -791,7 +796,7 @@ export default function BotsPage() {
                               <div className="flex items-center gap-2 font-mono text-[10px] text-white/50 mt-0.5">
                                 <span>{group.running}/{group.items.length} live</span>
                                 {group.totalShards > 0 && (
-                                  <span>· 💎 {formatShards(group.totalShards)}</span>
+                                  <span className="inline-flex items-center gap-1">· <Gem className="h-2.5 w-2.5 text-white/70" /> {formatShards(group.totalShards)}</span>
                                 )}
                               </div>
                             </div>
@@ -894,8 +899,8 @@ export default function BotsPage() {
 
                                   <div className="flex shrink-0 items-center gap-1.5">
                                     {bot.shards !== null && bot.shards !== undefined && (
-                                      <span className="inline-flex items-center gap-0.5 rounded border border-white/15 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
-                                        💎 {formatShards(bot.shards)}
+                                      <span className="inline-flex items-center gap-1 rounded border border-white/15 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                                        <Gem className="h-2.5 w-2.5 text-white/70" /> {formatShards(bot.shards)}
                                       </span>
                                     )}
                                     <StatusBadge status={bot.status} />
@@ -982,7 +987,7 @@ export default function BotsPage() {
                               className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
                               title="In-game Shards"
                             >
-                              💎 {formatShards(bot.shards)}
+                              <Gem className="h-3 w-3 text-white/80" /> {formatShards(bot.shards)}
                             </span>
                           )}
                           <StatusBadge status={bot.status} />
@@ -1017,7 +1022,7 @@ export default function BotsPage() {
                 <div className="flex items-center gap-2">
                   {selected.shards !== null && selected.shards !== undefined && (
                     <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-xs font-bold text-white">
-                      💎 {formatShards(selected.shards)}
+                      <Gem className="h-3 w-3 text-white/80" /> {formatShards(selected.shards)}
                     </span>
                   )}
                   <StatusBadge status={selected.status} />
@@ -1057,7 +1062,7 @@ export default function BotsPage() {
                         <StatusBadge status={selected.status} />
                         {selected.shards !== null && selected.shards !== undefined && (
                           <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/15 px-3 py-1 font-mono text-xs font-black text-white shadow-[0_0_12px_rgba(255,255,255,0.25)]">
-                            💎 {formatShards(selected.shards)} Shards
+                            <Gem className="h-3.5 w-3.5 text-white/90" /> {formatShards(selected.shards)} Shards
                           </span>
                         )}
                       </div>
@@ -1146,7 +1151,7 @@ export default function BotsPage() {
         onClose={() => setDeployOpen(false)}
         title={parsedNames.length > 1 ? `Deploy ${parsedNames.length} Bots` : 'Deploy Bot'}
         description="Deploy single or multiple bots instantly with automated proxy rotation and cracked auto-auth handshakes."
-        wide
+        size="lg"
         footer={
           <>
             <Button onClick={() => setDeployOpen(false)}>Cancel</Button>
@@ -1158,40 +1163,111 @@ export default function BotsPage() {
         }
       >
         <div className="space-y-4">
-          {/* Username & Studio Row */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+          {/* Redesigned Wide Username Workspace */}
+          <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-5 space-y-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <Users className="h-4 w-4 text-white/70" />
+                <span className="text-xs font-bold uppercase tracking-wider text-white">
                   Minecraft Username(s)
                 </span>
-                {parsedNames.length > 1 && (
-                  <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
-                    ⚡ {parsedNames.length} Bots Batch Mode
+                {parsedNames.length > 1 ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm">
+                    <Layers className="h-3 w-3 text-white" /> {parsedNames.length} Bots Roster
+                  </span>
+                ) : (
+                  <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-white/50">
+                    Single Bot
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setNameStudioOpen(true)}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-white/70 hover:text-white transition active:scale-95"
-              >
-                <Sparkles className="h-3 w-3" /> Name Studio
-              </button>
+              <div className="flex items-center gap-2">
+                {deploy.username && (
+                  <button
+                    type="button"
+                    onClick={() => setDeploy({ ...deploy, username: '' })}
+                    className="text-[11px] font-semibold text-white/40 hover:text-white transition"
+                  >
+                    Clear
+                  </button>
+                )}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setNameStudioOpen(true)}
+                  className="h-8 gap-1.5 text-xs font-bold"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-white/80" /> Name Studio
+                </Button>
+              </div>
             </div>
-            
-            <textarea
-              rows={parsedNames.length > 1 ? 3 : 2}
-              className="w-full rounded-xl border border-white/15 bg-white/[0.06] p-3 font-mono text-xs text-white outline-none focus:border-white placeholder:text-white/30"
-              value={deploy.username}
-              onChange={(event) => setDeploy({ ...deploy, username: event.target.value })}
-              placeholder="e.g. consensus1, OhLlama, notyourllama (or enter one name per line)"
-              required
-            />
 
-            <p className="text-[11px] text-white/40">
-              Tip: Enter multiple usernames separated by commas or lines to deploy multiple bots with automated Round-Robin proxy mapping!
+            {/* Large Wide Textarea */}
+            <div className="relative">
+              <textarea
+                rows={parsedNames.length > 2 ? 4 : 3}
+                className="w-full rounded-2xl border border-white/20 bg-black/70 p-4 font-mono text-base font-semibold leading-relaxed tracking-wide text-white outline-none transition-all duration-200 placeholder:text-sm placeholder:font-normal placeholder:text-white/25 focus:border-white focus:bg-black/90 focus:ring-4 focus:ring-white/10"
+                value={deploy.username}
+                onChange={(event) => setDeploy({ ...deploy, username: event.target.value })}
+                placeholder="e.g. consensus1, OhLlama, notyourllama (or paste one username per line)"
+                required
+              />
+            </div>
+
+            <p className="text-xs leading-relaxed text-white/45">
+              Enter one username or multiple usernames separated by commas or lines for batch deployment with automated proxy round-robin rotation.
             </p>
+
+            {/* Live Roster Avatar Preview Chips */}
+            {parsedNames.length > 0 && (
+              <div className="pt-3 border-t border-white/[0.08] space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-white/50">
+                  <span className="font-bold uppercase tracking-wider">
+                    Roster Preview ({parsedNames.length})
+                  </span>
+                  {deploy.proxyMode === 'rotate' && proxies.length > 0 && (
+                    <span>
+                      Proxy mesh: {Math.min(parsedNames.length, proxies.length)} lanes active
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto console-scrollbar p-0.5">
+                  {parsedNames.map((name, idx) => (
+                    <div
+                      key={idx}
+                      className="group/chip flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] pl-2 pr-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:border-white/30 hover:bg-white/[0.10]"
+                    >
+                      <img
+                        src={`https://mc-heads.net/avatar/${encodeURIComponent(name)}/32`}
+                        alt={name}
+                        className="h-5 w-5 rounded-md bg-black/60 object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/32';
+                        }}
+                      />
+                      <span className="font-mono text-xs font-bold text-white">{name}</span>
+                      {deploy.proxyMode === 'rotate' && proxies.length > 0 && (
+                        <span className="rounded bg-white/10 px-1.5 py-0.2 font-mono text-[10px] text-white/60">
+                          P#{ (idx % proxies.length) + 1 }
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = parsedNames.filter((_, i) => i !== idx).join(', ');
+                          setDeploy({ ...deploy, username: updated });
+                        }}
+                        className="ml-0.5 rounded p-0.5 text-white/30 hover:bg-white/10 hover:text-white transition"
+                        title="Remove"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Server Config & Auth Grid */}
@@ -1295,35 +1371,39 @@ export default function BotsPage() {
 
             <div className="flex flex-wrap gap-2 pt-1">
               {[
-                { id: 'rotate', label: `🔄 Round-Robin (${proxies.length} Proxies)` },
-                { id: 'specific', label: '🎯 Specific Proxy' },
-                { id: 'direct', label: '🌐 Direct (No Proxy)' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setDeploy({ ...deploy, proxyMode: tab.id })}
-                  className={cn(
-                    'rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95',
-                    deploy.proxyMode === tab.id
-                      ? 'bg-white text-black shadow-sm'
-                      : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white'
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                { id: 'rotate', label: `Round-Robin (${proxies.length} Proxies)`, icon: Shuffle },
+                { id: 'specific', label: 'Specific Proxy', icon: Target },
+                { id: 'direct', label: 'Direct (No Proxy)', icon: Globe },
+              ].map((tab) => {
+                const IconComponent = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setDeploy({ ...deploy, proxyMode: tab.id })}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95',
+                      deploy.proxyMode === tab.id
+                        ? 'bg-white text-black shadow-sm'
+                        : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white'
+                    )}
+                  >
+                    <IconComponent className="h-3.5 w-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {deploy.proxyMode === 'rotate' && (
               <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white/70">
                 {proxies.length > 0 ? (
                   <p className="text-[11px] text-white/60">
-                    🟢 Evenly cycles through {proxies.length} available proxies (1➔P#1, 2➔P#2 ... {proxies.length + 1}➔P#1).
+                    Cycles through {proxies.length} available proxies in round-robin sequence (1➔P#1, 2➔P#2 ... {proxies.length + 1}➔P#1).
                   </p>
                 ) : (
                   <p className="text-[11px] text-white/40">
-                    ⚠️ No proxies available in your pool. Direct connections will be used.
+                    No proxies available in your pool. Direct connections will be used.
                   </p>
                 )}
               </div>
@@ -1505,13 +1585,14 @@ export default function BotsPage() {
                       type="button"
                       onClick={() => setTargetCategoryInput(cat)}
                       className={cn(
-                        'rounded-xl border px-3 py-1.5 text-xs font-semibold transition active:scale-95',
+                        'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition active:scale-95',
                         targetCategoryInput === cat
                           ? 'border-white bg-white text-black font-bold shadow-sm'
                           : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/25 hover:text-white'
                       )}
                     >
-                      📁 {cat}
+                      <Folder className="h-3.5 w-3.5 text-white/60" />
+                      <span>{cat}</span>
                     </button>
                   ))}
               </div>

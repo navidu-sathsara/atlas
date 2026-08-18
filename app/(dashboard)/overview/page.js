@@ -8,6 +8,7 @@ import {
   Bot,
   Boxes,
   CircleStop,
+  Gem,
   Network,
   Play,
   Radio,
@@ -207,7 +208,7 @@ export default function OverviewPage() {
                             className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
                             title="In-game Shards"
                           >
-                            💎 {formatShards(bot.shards)}
+                            <Gem className="h-3 w-3 text-white/80" /> {formatShards(bot.shards)}
                           </span>
                         )}
                         <StatusBadge status={bot.status} />

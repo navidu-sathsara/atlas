@@ -5,6 +5,7 @@ import {
   CircleStop,
   Eraser,
   ExternalLink,
+  Gem,
   Play,
   RotateCcw,
   Send,
@@ -170,7 +171,7 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
                   className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm"
                   title="In-game Shards"
                 >
-                  💎 {formatShards(shards)}
+                  <Gem className="h-2.5 w-2.5 text-white/70" /> {formatShards(shards)}
                 </span>
               )}
             </div>
