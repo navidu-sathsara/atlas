@@ -20,7 +20,7 @@ import { useToast } from '@/components/providers';
 import { ShardTelemetryCard } from '@/components/shard-telemetry';
 import { Button, EmptyState, PageHeader, Panel, StatCard, StatusBadge } from '@/components/ui';
 import { api, cn } from '@/lib/api';
-import { botLabel, categoryOf, relativeTime } from '@/lib/format';
+import { botLabel, categoryOf, formatShards, relativeTime } from '@/lib/format';
 
 export default function OverviewPage() {
   const { bots, proxies, loading, refreshBots } = useDashboard();
@@ -201,7 +201,17 @@ export default function OverviewPage() {
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={bot.status} />
+                      <div className="flex items-center gap-2">
+                        {bot.shards !== null && bot.shards !== undefined && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
+                            title="In-game Shards"
+                          >
+                            💎 {formatShards(bot.shards)}
+                          </span>
+                        )}
+                        <StatusBadge status={bot.status} />
+                      </div>
                     </div>
                   </div>
 

@@ -11,7 +11,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { api, cn } from '@/lib/api';
-import { botLabel, categoryOf } from '@/lib/format';
+import { botLabel, categoryOf, formatShards } from '@/lib/format';
 import { Button, StatusBadge } from '@/components/ui';
 import { useToast } from '@/components/providers';
 
@@ -37,8 +37,13 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState('');
   const [streamState, setStreamState] = useState('connecting');
+  const [shards, setShards] = useState(bot.shards);
   const scrollRef = useRef(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setShards(bot.shards);
+  }, [bot.shards]);
 
   useEffect(() => {
     if (!bot?.id) return;
@@ -64,6 +69,9 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
       }
       if (payload.type === 'status') {
         onStatusChange?.(bot.id, payload.status);
+      }
+      if (payload.type === 'shards') {
+        setShards(payload.shards);
       }
     };
 
@@ -134,12 +142,20 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
             />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <strong className="truncate text-sm font-extrabold text-white">{bot.config?.username || bot.id}</strong>
               <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white/60">
                 {bot.id}
               </span>
               <StatusBadge status={bot.status} />
+              {shards !== null && shards !== undefined && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm"
+                  title="In-game Shards"
+                >
+                  💎 {formatShards(shards)}
+                </span>
+              )}
             </div>
             <p className="mt-0.5 truncate text-xs text-white/50">
               {bot.config?.host || 'No host'} · {categoryOf(bot)}

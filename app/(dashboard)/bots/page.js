@@ -39,7 +39,7 @@ import { UsernameStudioModal } from '@/components/username-studio-modal';
 import { BatchBotGeneratorModal } from '@/components/batch-bot-generator-modal';
 import { Button, Checkbox, EmptyState, Modal, PageHeader, Panel, Spinner, StatusBadge, Tabs } from '@/components/ui';
 import { api, cn } from '@/lib/api';
-import { botLabel, categoryOf, proxyLabel } from '@/lib/format';
+import { botLabel, categoryOf, formatShards, proxyLabel } from '@/lib/format';
 
 const defaultDeploy = {
   id: '',
@@ -518,6 +518,14 @@ export default function BotsPage() {
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
+                      {bot.shards !== null && bot.shards !== undefined && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
+                          title="In-game Shards"
+                        >
+                          💎 {formatShards(bot.shards)}
+                        </span>
+                      )}
                       <StatusBadge status={bot.status} />
                       <ChevronRight className="h-4 w-4 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
                     </div>
@@ -545,7 +553,14 @@ export default function BotsPage() {
                 >
                   <ArrowLeft className="h-4 w-4" /> Back to Fleet List
                 </button>
-                <StatusBadge status={selected.status} />
+                <div className="flex items-center gap-2">
+                  {selected.shards !== null && selected.shards !== undefined && (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-xs font-bold text-white">
+                      💎 {formatShards(selected.shards)}
+                    </span>
+                  )}
+                  <StatusBadge status={selected.status} />
+                </div>
               </div>
 
               <Panel className="p-5 sm:p-6">
@@ -579,6 +594,11 @@ export default function BotsPage() {
                           {selected.id}
                         </span>
                         <StatusBadge status={selected.status} />
+                        {selected.shards !== null && selected.shards !== undefined && (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/15 px-3 py-1 font-mono text-xs font-black text-white shadow-[0_0_12px_rgba(255,255,255,0.25)]">
+                            💎 {formatShards(selected.shards)} Shards
+                          </span>
+                        )}
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-white/70">
                         <span className="rounded-lg border border-white/12 bg-white/[0.05] px-2.5 py-1">
