@@ -965,6 +965,7 @@ function resolveTargetBotsForAutomation(user, automation) {
 }
 
 const activeAutomationRuns = new Set();
+const activeManualRuns = new Map();
 
 function triggerMatches(automation, type, context = {}) {
     if (!automation?.enabled || automation.trigger?.type !== type) return false;
@@ -1458,7 +1459,11 @@ async function handleHttp(req, res, state) {
         const parts = sub.split('/').filter(Boolean);
 
         if (req.method === 'GET' && parts.length === 0) {
-            return json(res, 200, { ok: true, automations: workspaces.automations(user.id) });
+            const autos = workspaces.automations(user.id).map(a => {
+                const runState = activeManualRuns.get(a.id);
+                return { ...a, _activeRun: runState || null };
+            });
+            return json(res, 200, { ok: true, automations: autos });
         }
 
         if (req.method === 'POST' && parts.length === 0) {
@@ -1496,15 +1501,30 @@ async function handleHttp(req, res, state) {
             const id = parts[0];
             const auto = workspaces.getAutomation(user.id, id);
             if (!auto) return json(res, 404, { ok: false, reason: 'Automation not found' });
+            if (activeManualRuns.has(id)) return json(res, 400, { ok: false, reason: 'Automation is already running manually.' });
+
             const targetBots = resolveTargetBotsForAutomation(user, auto);
             if (!targetBots.length) {
                 return json(res, 400, { ok: false, reason: 'No target bots available or matching criteria.' });
             }
-            const executionResults = await Promise.all(targetBots.map(async (b) => {
-                const resBot = await executeAutomationOnBot(b.id, auto);
-                return { botId: b.id, ...resBot };
-            }));
-            return json(res, 200, { ok: true, count: targetBots.length, results: executionResults });
+
+            const runState = { startedAt: Date.now(), total: targetBots.length, completed: 0 };
+            activeManualRuns.set(id, runState);
+
+            Promise.all(targetBots.map(async (b) => {
+                try {
+                    await executeAutomationOnBot(b.id, auto);
+                } catch (e) {
+                    pushLog(b.id, `[automation] Error: ${e.message}`);
+                } finally {
+                    const state = activeManualRuns.get(id);
+                    if (state) state.completed++;
+                }
+            })).finally(() => {
+                activeManualRuns.delete(id);
+            });
+
+            return json(res, 202, { ok: true, count: targetBots.length, status: runState });
         }
 
         if (parts.length === 2 && parts[1] === 'toggle' && req.method === 'POST') {

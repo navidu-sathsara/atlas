@@ -130,7 +130,18 @@ export default function AutomationsPage() {
     catch (error) { toast(error.message, 'error'); }
     finally { setLoading(false); }
   }, [toast]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/automations', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+        const data = await res.json();
+        setAutomations(data.automations || []);
+      } catch (e) {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [load]);
 
   const categories = useMemo(() => [...new Set(bots.map(categoryOf))].sort(), [bots]);
   const filtered = useMemo(() => automations.filter((automation) => {
@@ -172,6 +183,7 @@ export default function AutomationsPage() {
     event?.stopPropagation(); setRunningId(automation.id);
     try {
       const result = await api(`/automations/${encodeURIComponent(automation.id)}/run`, { method: 'POST' });
+      // The API now returns 202 Accepted, and polling handles the progress.
       toast(`Program delivered to ${result.count} bot${result.count === 1 ? '' : 's'}`, 'success');
     } catch (error) { toast(error.message, 'error'); }
     finally { setRunningId(''); }
@@ -272,7 +284,7 @@ export default function AutomationsPage() {
             <div className="p-4">
               <div className="flex items-start gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: COLORS.events.soft, color: COLORS.events.solid }}><Flag className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><strong className="truncate text-sm text-white">{automation.name}</strong><StatusBadge status={automation.enabled ? 'running' : 'stopped'} /></div><p className="mt-1 line-clamp-2 text-xs leading-5 text-white/35">{automation.description || 'No description'}</p></div></div>
               <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/35 p-3"><div className="flex items-center gap-2 text-xs font-semibold" style={{ color: COLORS.events.solid }}><Flag className="h-3.5 w-3.5" />{triggerLabel(automation.trigger)}</div><div className="mt-2 flex flex-wrap gap-1.5">{(automation.blocks || []).slice(0, 5).map((block) => <span key={block.id} className="h-2.5 w-7 rounded-full" style={{ background: COLORS[definition(block.type).category].solid }} />)}{automation.blocks?.length > 5 && <span className="text-[9px] text-white/30">+{automation.blocks.length - 5}</span>}</div></div>
-              <div className="mt-4 flex items-center justify-between"><span className="text-xs font-medium text-white/45">{automation.blocks?.length || 0} blocks · {targetDescription(automation, bots)}</span><div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}><Switch checked={automation.enabled} onChange={() => toggle(automation)} /><button onClick={(event) => run(automation, event)} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" title="Run now">{runningId === automation.id ? <Square className="h-4 w-4 animate-pulse" /> : <Play className="h-4 w-4" />}</button><button onClick={(event) => remove(automation, event)} className="rounded-lg p-2 text-white/25 hover:bg-white/10 hover:text-white" title="Delete"><Trash2 className="h-4 w-4" /></button></div></div>
+              <div className="mt-4 flex items-center justify-between"><span className="text-xs font-medium text-white/45">{automation.blocks?.length || 0} blocks · {targetDescription(automation, bots)}</span><div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}><Switch checked={automation.enabled} onChange={() => toggle(automation)} /><button onClick={(event) => { if (!automation._activeRun) run(automation, event); }} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" title="Run now">{automation._activeRun ? <span className="text-[10px] font-bold text-primary px-1">{Math.min(automation._activeRun.completed, automation._activeRun.total)}/{automation._activeRun.total}</span> : runningId === automation.id ? <Square className="h-4 w-4 animate-pulse" /> : <Play className="h-4 w-4" />}</button><button onClick={(event) => remove(automation, event)} className="rounded-lg p-2 text-white/25 hover:bg-white/10 hover:text-white" title="Delete"><Trash2 className="h-4 w-4" /></button></div></div>
             </div>
           </article>
         ))}</div>}
