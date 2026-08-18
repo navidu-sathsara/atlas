@@ -863,12 +863,22 @@ class BananaBot {
 
         this.bot.on('messagestr', (message, position) => {
             if (position === 'game_info') {
+                // Some servers send auth prompts in the actionbar
+                if (!this.isLoggingIn && this.autoAuth) {
+                    this.autoAuth.handleMessage(message);
+                }
                 return;
             }
             Logger.log(message, 'CHAT');
 
-            if (!this.isLoggingIn) {
+            if (!this.isLoggingIn && this.autoAuth) {
                 this.autoAuth.handleMessage(message);
+            }
+        });
+
+        this.bot.on('title', (text) => {
+            if (text && !this.isLoggingIn && this.autoAuth) {
+                this.autoAuth.handleMessage(text);
             }
         });
 

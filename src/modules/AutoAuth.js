@@ -31,6 +31,18 @@ const REGISTER_HINTS = [
     'register your account',
     '/register <',
     '/register [',
+    'use /register',
+    'type /register',
+    'command: /register',
+    'must register',
+    'register before',
+    '/reg <',
+    '/reg [',
+    'use /reg',
+    'type /reg',
+    'account not found',
+    'register your nickname',
+    'register to play',
 ];
 
 const LOGIN_HINTS = [
@@ -45,6 +57,21 @@ const LOGIN_HINTS = [
     '/login <',
     '/login [',
     'password',
+    'use /login',
+    'type /login',
+    'command: /login',
+    'must login',
+    'enter your password',
+    'enter password',
+    'login to continue',
+    'you are not logged in',
+    'not logged in',
+    'use /l <',
+    'type /l <',
+    '/l <password',
+    'password:',
+    'login:',
+    'auth required',
 ];
 
 // Player chat, e.g. "<Steve> use /login" or "[VIP] Steve: /login <password>".
@@ -58,6 +85,10 @@ const LOGIN_HINTS = [
 // [rank] name) proves the line is player chat.
 const PLAYER_CHAT_RE = /^\s*\[[^\]]{1,24}\]\s*(?:<[^<>]{1,20}>|[A-Za-z0-9_]{1,16}\s*[:»])\s*\S/;
 const ANGLE_SPEAKER_RE = /^\s*<[^<>]{1,20}>\s*\S/;
+
+function stripColors(str) {
+    return String(str || '').replace(/§[0-9a-fk-or]|&[0-9a-fk-or]/gi, '').trim();
+}
 
 class AutoAuth {
     /**
@@ -103,33 +134,41 @@ class AutoAuth {
      * @returns {'register'|'login'|null}
      */
     classify(message) {
-        const raw = String(message || '');
-        const lower = raw.toLowerCase();
-        const hasRegister = lower.includes('/register');
-        const hasLogin = lower.includes('/login');
-        if (!hasRegister && !hasLogin) return null;
+        const clean = stripColors(message);
+        const lower = clean.toLowerCase();
+        const hasRegisterCmd = /(?:\/register|\/reg)\b/i.test(lower);
+        const hasLoginCmd = /(?:\/login|\/l)\b/i.test(lower);
+        const hasRegisterHint = this._matches(lower, REGISTER_HINTS);
+        const hasLoginHint = this._matches(lower, LOGIN_HINTS);
+
+        if (!hasRegisterCmd && !hasLoginCmd && !hasRegisterHint && !hasLoginHint) return null;
 
         // Only reject lines with a real speaker prefix, and only when the line
         // names an auth command. A bait like "<Steve> use /login" is still
         // skipped; "Command: /login <password>" is not.
-        if (ANGLE_SPEAKER_RE.test(raw) || PLAYER_CHAT_RE.test(raw)) return null;
+        if (ANGLE_SPEAKER_RE.test(clean) || PLAYER_CHAT_RE.test(clean)) return null;
 
-        const looksRegister = hasRegister && this._matches(lower, REGISTER_HINTS);
-        const looksLogin = hasLogin && this._matches(lower, LOGIN_HINTS);
+        // 1. Definite command matches
+        if (hasRegisterCmd && !hasLoginCmd) return 'register';
+        if (hasLoginCmd && !hasRegisterCmd) return 'login';
 
-        // "not registered" wins outright — that's the server telling us this
-        // name has no account yet, even if the same line also lists /login.
-        if (lower.includes('not registered') || lower.includes('need to register')) {
-            return 'register';
-        }
-        if (looksRegister && looksLogin) {
-            // A combined help line. Prefer login: on an account that already
-            // exists a stray /register is rejected harmlessly, whereas guessing
-            // register first would leave us unauthenticated on the retry.
+        // 2. Both commands present (e.g. "Use /login or /register")
+        if (hasRegisterCmd && hasLoginCmd) {
+            if (lower.includes('not registered') || lower.includes('need to register') || lower.includes('create an account') || lower.includes('create account') || lower.includes('account not found') || lower.includes('new account') || lower.includes('first time')) {
+                return 'register';
+            }
             return 'login';
         }
-        if (looksRegister) return 'register';
-        if (looksLogin) return 'login';
+
+        // 3. Fallback to hint detection when command slash isn't explicit
+        if (hasRegisterHint && !hasLoginHint) return 'register';
+        if (hasLoginHint && !hasRegisterHint) return 'login';
+        if (hasRegisterHint && hasLoginHint) {
+            if (lower.includes('not registered') || lower.includes('need to register') || lower.includes('create an account') || lower.includes('create account') || lower.includes('account not found')) {
+                return 'register';
+            }
+            return 'login';
+        }
         return null;
     }
 
