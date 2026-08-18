@@ -5,6 +5,7 @@ import {
   Activity,
   AlertCircle,
   ArrowDown,
+  ArrowLeft,
   ArrowRight,
   ArrowUp,
   Bot,
@@ -20,6 +21,7 @@ import {
   Eye,
   FileCode2,
   Folder,
+  GripVertical,
   Layers,
   MessageSquare,
   Network,
@@ -176,48 +178,12 @@ const WORKFLOW_PRESETS = [
       params: {},
     },
     blocks: [
-      {
-        id: 'b1',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 1.5s after Spawn',
-        params: { ms: 1500 },
-      },
-      {
-        id: 'b2',
-        type: 'action_command',
-        category: 'action',
-        label: 'Login with Password',
-        params: { command: '/login AtlasPass123!' },
-      },
-      {
-        id: 'b3',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 2s for Hub Load',
-        params: { ms: 2000 },
-      },
-      {
-        id: 'b4',
-        type: 'action_command',
-        category: 'action',
-        label: 'Connect to BoxPVP Server',
-        params: { command: '/server boxpvp' },
-      },
-      {
-        id: 'b5',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 3s for World Spawn',
-        params: { ms: 3000 },
-      },
-      {
-        id: 'b6',
-        type: 'action_module',
-        category: 'module',
-        label: 'Start BoxPVP Miner Routine',
-        params: { module: 'boxpvp', action: 'start' },
-      },
+      { id: 'b1', type: 'control_wait', category: 'control', label: 'Wait 1.5s after Spawn', params: { ms: 1500 } },
+      { id: 'b2', type: 'action_command', category: 'action', label: 'Login with Password', params: { command: '/login AtlasPass123!' } },
+      { id: 'b3', type: 'control_wait', category: 'control', label: 'Wait 2s for Hub Load', params: { ms: 2000 } },
+      { id: 'b4', type: 'action_command', category: 'action', label: 'Connect to BoxPVP Server', params: { command: '/server boxpvp' } },
+      { id: 'b5', type: 'control_wait', category: 'control', label: 'Wait 3s for World Spawn', params: { ms: 3000 } },
+      { id: 'b6', type: 'action_module', category: 'module', label: 'Start BoxPVP Miner Routine', params: { module: 'boxpvp', action: 'start' } },
     ],
   },
   {
@@ -230,154 +196,10 @@ const WORKFLOW_PRESETS = [
       params: { intervalSec: 45 },
     },
     blocks: [
-      {
-        id: 'b1',
-        type: 'action_jump',
-        category: 'action',
-        label: 'Anti-AFK Jump',
-        params: {},
-      },
-      {
-        id: 'b2',
-        type: 'action_look',
-        category: 'action',
-        label: 'Random Look Rotation',
-        params: { direction: 'random' },
-      },
-      {
-        id: 'b3',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 500ms',
-        params: { ms: 500 },
-      },
-      {
-        id: 'b4',
-        type: 'action_command',
-        category: 'action',
-        label: 'Query In-game Balance',
-        params: { command: '/balance' },
-      },
-    ],
-  },
-  {
-    name: 'Inventory Full Auto-Seller',
-    category: 'Economy',
-    description: 'When inventory fills up, warps to server shop, sells all items, and returns to mine.',
-    targetMode: 'all',
-    trigger: {
-      type: 'on_inventory_full',
-      params: {},
-    },
-    blocks: [
-      {
-        id: 'b1',
-        type: 'action_command',
-        category: 'action',
-        label: 'Warp to Shop',
-        params: { command: '/warp shop' },
-      },
-      {
-        id: 'b2',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 1.5s',
-        params: { ms: 1500 },
-      },
-      {
-        id: 'b3',
-        type: 'action_command',
-        category: 'action',
-        label: 'Sell All Inventory',
-        params: { command: '/sell all' },
-      },
-      {
-        id: 'b4',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 2s',
-        params: { ms: 2000 },
-      },
-      {
-        id: 'b5',
-        type: 'action_command',
-        category: 'action',
-        label: 'Return to Mine Area',
-        params: { command: '/warp mine' },
-      },
-      {
-        id: 'b6',
-        type: 'action_module',
-        category: 'module',
-        label: 'Resume Miner',
-        params: { module: 'boxpvp', action: 'start' },
-      },
-    ],
-  },
-  {
-    name: 'Emergency Low-HP Safe Retreat',
-    category: 'Combat',
-    description: 'When health falls below threshold, immediately teleports home and switches to food/apple.',
-    targetMode: 'all',
-    trigger: {
-      type: 'on_health_low',
-      params: { healthThreshold: 8 },
-    },
-    blocks: [
-      {
-        id: 'b1',
-        type: 'action_command',
-        category: 'action',
-        label: 'Emergency Warp Home',
-        params: { command: '/home safe' },
-      },
-      {
-        id: 'b2',
-        type: 'action_slot',
-        category: 'action',
-        label: 'Switch to Golden Apple Slot',
-        params: { slot: 0 },
-      },
-      {
-        id: 'b3',
-        type: 'notification_log',
-        category: 'notification',
-        label: 'Log Health Alarm',
-        params: { message: 'Low health triggered safe retreat.' },
-      },
-    ],
-  },
-  {
-    name: 'Payment Forwarder & Discord Ping',
-    category: 'Economy',
-    description: 'When in-game chat indicates a payment received, forward funds to master account and send Discord alert.',
-    targetMode: 'all',
-    trigger: {
-      type: 'on_chat',
-      params: { pattern: 'has sent you', matchType: 'contains' },
-    },
-    blocks: [
-      {
-        id: 'b1',
-        type: 'control_wait',
-        category: 'control',
-        label: 'Wait 1s',
-        params: { ms: 1000 },
-      },
-      {
-        id: 'b2',
-        type: 'action_command',
-        category: 'action',
-        label: 'Forward to Master Account',
-        params: { command: '/pay Admin 1000' },
-      },
-      {
-        id: 'b3',
-        type: 'notification_webhook',
-        category: 'notification',
-        label: 'Notify Discord',
-        params: { webhookUrl: '', content: 'Bot received payment and forwarded to Master.' },
-      },
+      { id: 'b1', type: 'action_jump', category: 'action', label: 'Anti-AFK Jump', params: {} },
+      { id: 'b2', type: 'action_look', category: 'action', label: 'Random Look Rotation', params: { direction: 'random' } },
+      { id: 'b3', type: 'control_wait', category: 'control', label: 'Wait 500ms', params: { ms: 500 } },
+      { id: 'b4', type: 'action_command', category: 'action', label: 'Query In-game Balance', params: { command: '/balance' } },
     ],
   },
 ];
@@ -402,13 +224,6 @@ const blankWorkflow = {
       label: 'Wait 1.0s',
       params: { ms: 1000 },
     },
-    {
-      id: 'b_init_2',
-      type: 'action_command',
-      category: 'action',
-      label: 'Send In-Game Command',
-      params: { command: '/balance' },
-    },
   ],
 };
 
@@ -431,10 +246,13 @@ export default function AutomationsPage() {
   // Simulator state
   const [simLogs, setSimLogs] = useState([]);
   const [simulating, setSimulating] = useState(false);
-  const [simBotId, setSimBotId] = useState('');
 
   // Presets modal
   const [presetsOpen, setPresetsOpen] = useState(false);
+
+  // Drag & Drop specific state
+  const [draggedIdx, setDraggedIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
 
   const loadAutomations = useCallback(async () => {
     setLoading(true);
@@ -486,6 +304,11 @@ export default function AutomationsPage() {
     setStudioOpen(true);
   };
 
+  const closeStudio = () => {
+    setStudioOpen(false);
+    setEditingId(null);
+  };
+
   const saveWorkflow = async () => {
     if (!draft.name?.trim()) {
       toast('Please provide a name for this automation', 'error');
@@ -506,7 +329,7 @@ export default function AutomationsPage() {
         });
         toast('New automation workflow created', 'success');
       }
-      setStudioOpen(false);
+      closeStudio();
       await loadAutomations();
     } catch (err) {
       toast(err.message || 'Failed to save automation', 'error');
@@ -558,7 +381,7 @@ export default function AutomationsPage() {
   };
 
   const runSimulationTest = async () => {
-    const targetBot = simBotId || bots[0]?.id;
+    const targetBot = bots[0]?.id;
     if (!targetBot) {
       toast('No bots online to test against.', 'error');
       return;
@@ -590,7 +413,7 @@ export default function AutomationsPage() {
     }
   };
 
-  const addBlockToDraft = (blockDef) => {
+  const addBlockToDraft = (blockDef, index = null) => {
     const newBlock = {
       id: `blk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       type: blockDef.type,
@@ -598,7 +421,15 @@ export default function AutomationsPage() {
       label: blockDef.label,
       params: { ...blockDef.defaultParams },
     };
-    setDraft((d) => ({ ...d, blocks: [...d.blocks, newBlock] }));
+    
+    setDraft((d) => {
+      if (index !== null) {
+        const updated = [...d.blocks];
+        updated.splice(index, 0, newBlock);
+        return { ...d, blocks: updated };
+      }
+      return { ...d, blocks: [...d.blocks, newBlock] };
+    });
   };
 
   const removeBlock = (index) => {
@@ -606,15 +437,6 @@ export default function AutomationsPage() {
       ...d,
       blocks: d.blocks.filter((_, i) => i !== index),
     }));
-  };
-
-  const moveBlock = (index, dir) => {
-    const targetIndex = index + dir;
-    if (targetIndex < 0 || targetIndex >= draft.blocks.length) return;
-    const updated = [...draft.blocks];
-    const item = updated.splice(index, 1)[0];
-    updated.splice(targetIndex, 0, item);
-    setDraft((d) => ({ ...d, blocks: updated }));
   };
 
   const duplicateBlock = (index) => {
@@ -639,6 +461,79 @@ export default function AutomationsPage() {
     });
   };
 
+  // Drag & Drop Handlers
+  const handleDragStartPalette = (e, blockDef) => {
+    e.dataTransfer.setData('application/x-atlas-palette', blockDef.type);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDragStartCanvas = (e, idx) => {
+    e.dataTransfer.setData('application/x-atlas-canvas', String(idx));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedIdx(idx);
+    
+    // Create a drag image to make it look nicer
+    const el = e.target;
+    e.dataTransfer.setDragImage(el, 20, 20);
+  };
+
+  const handleDragOverCanvas = (e, idx) => {
+    e.preventDefault();
+    if (idx !== dragOverIdx) setDragOverIdx(idx);
+  };
+
+  const handleDropCanvas = (e, idx) => {
+    e.preventDefault();
+    setDragOverIdx(null);
+    setDraggedIdx(null);
+
+    const paletteType = e.dataTransfer.getData('application/x-atlas-palette');
+    if (paletteType) {
+      const blockDef = BLOCK_CATALOG.find(b => b.type === paletteType);
+      if (blockDef) addBlockToDraft(blockDef, idx);
+      return;
+    }
+
+    const canvasIdx = e.dataTransfer.getData('application/x-atlas-canvas');
+    if (canvasIdx !== '') {
+      const fromIdx = parseInt(canvasIdx);
+      if (fromIdx === idx) return;
+
+      setDraft((d) => {
+        const updated = [...d.blocks];
+        const item = updated.splice(fromIdx, 1)[0];
+        // adjust index if we're moving item down and shifting the array
+        const toIdx = fromIdx < idx ? idx - 1 : idx;
+        updated.splice(toIdx, 0, item);
+        return { ...d, blocks: updated };
+      });
+    }
+  };
+
+  const handleDropEndZone = (e) => {
+    e.preventDefault();
+    setDragOverIdx(null);
+    setDraggedIdx(null);
+
+    const paletteType = e.dataTransfer.getData('application/x-atlas-palette');
+    if (paletteType) {
+      const blockDef = BLOCK_CATALOG.find(b => b.type === paletteType);
+      if (blockDef) addBlockToDraft(blockDef);
+      return;
+    }
+
+    const canvasIdx = e.dataTransfer.getData('application/x-atlas-canvas');
+    if (canvasIdx !== '') {
+      const fromIdx = parseInt(canvasIdx);
+      setDraft((d) => {
+        const updated = [...d.blocks];
+        const item = updated.splice(fromIdx, 1)[0];
+        updated.push(item); // drop at the very end
+        return { ...d, blocks: updated };
+      });
+    }
+  };
+
   const loadPreset = (preset) => {
     setDraft({
       ...JSON.parse(JSON.stringify(preset)),
@@ -647,10 +542,337 @@ export default function AutomationsPage() {
     });
     setEditingId(null);
     setPresetsOpen(false);
-    setStudioOpen(true);
     toast(`Loaded preset "${preset.name}"`, 'success');
   };
 
+  // FULL SCREEN STUDIO VIEW
+  if (studioOpen) {
+    return (
+      <div className="flex h-[calc(100vh-68px)] flex-col bg-[#0a0a0a] text-white">
+        {/* Studio Top Navbar */}
+        <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.02] px-4 py-3 shadow-sm shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={closeStudio}
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 transition text-white/60 hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="h-6 w-px bg-white/10" />
+            <div className="flex flex-col">
+              <input
+                type="text"
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="Workflow Name"
+                className="bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/30 w-64"
+              />
+              <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Visual Canvas</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-white/60">Status:</span>
+              <Switch checked={draft.enabled} onChange={() => setDraft(d => ({ ...d, enabled: !d.enabled }))} />
+            </div>
+
+            <Button size="sm" variant="secondary" onClick={() => setPresetsOpen(true)} className="gap-1.5 h-8 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> Presets
+            </Button>
+            <Button size="sm" variant="secondary" onClick={runSimulationTest} loading={simulating} className="gap-1.5 h-8 text-xs">
+              <CirclePlay className="h-3.5 w-3.5" /> Test
+            </Button>
+            <Button size="sm" variant="primary" onClick={saveWorkflow} loading={saving} className="gap-1.5 h-8 text-xs px-4">
+              <Check className="h-3.5 w-3.5" /> Save
+            </Button>
+          </div>
+        </div>
+
+        {/* Studio Main Workspace */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Palette Sidebar */}
+          <div className="w-72 shrink-0 border-r border-white/[0.08] bg-black/40 flex flex-col">
+            <div className="p-3 border-b border-white/[0.05] bg-white/[0.02]">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-white/70 flex items-center gap-2">
+                <Boxes className="h-3.5 w-3.5" /> Block Palette
+              </h3>
+              <p className="mt-1 text-[10px] text-white/40">Drag blocks into the workspace to build your workflow.</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 console-scrollbar">
+              {BLOCK_CATALOG.map((item) => {
+                const IconComp = item.icon;
+                return (
+                  <div
+                    key={item.type}
+                    draggable
+                    onDragStart={(e) => handleDragStartPalette(e, item)}
+                    className="group flex cursor-grab items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 hover:border-white/30 hover:bg-white/[0.08] transition active:cursor-grabbing"
+                  >
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
+                      <IconComp className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <strong className="block truncate text-xs font-bold text-white">{item.label}</strong>
+                      <span className="block truncate text-[10px] text-white/40">{item.desc}</span>
+                    </div>
+                    <GripVertical className="h-3.5 w-3.5 text-white/20 group-hover:text-white/60 shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Canvas Area */}
+          <div className="flex-1 flex flex-col relative bg-[#111] overflow-hidden">
+             {/* Target Scope & Background Grid */}
+             <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+             
+             <div className="relative z-10 flex-1 overflow-y-auto p-6 console-scrollbar">
+               <div className="max-w-3xl mx-auto space-y-6">
+                 
+                 {/* Top Settings (Scope, Category) */}
+                 <div className="rounded-2xl border border-white/10 bg-black/60 p-4 shadow-sm backdrop-blur-md">
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/50">Target Fleet Scope</label>
+                       <select value={draft.targetMode} onChange={(e) => setDraft({ ...draft, targetMode: e.target.value })} className="field-control text-xs h-9">
+                         <option value="all">All Managed Bots</option>
+                         <option value="category">Fleet Category</option>
+                         <option value="bots">Specific Bots</option>
+                       </select>
+                     </div>
+                     {draft.targetMode === 'category' && (
+                       <div>
+                         <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/50">Category Name</label>
+                         <input type="text" value={draft.targetCategory} onChange={(e) => setDraft({ ...draft, targetCategory: e.target.value })} placeholder="e.g. Mining" className="field-control text-xs h-9" />
+                       </div>
+                     )}
+                     {draft.targetMode === 'bots' && (
+                       <div>
+                         <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/50">Bots</label>
+                         <button className="field-control text-xs h-9 flex items-center justify-between opacity-50 cursor-not-allowed">
+                           {draft.targetBotIds.length} Selected (Edit in Advanced)
+                         </button>
+                       </div>
+                     )}
+                     <div>
+                       <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/50">Workflow Category</label>
+                       <input type="text" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} placeholder="e.g. General" className="field-control text-xs h-9" />
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* The Canvas Stack */}
+                 <div className="space-y-0 relative">
+                   
+                   {/* Trigger Hat Block */}
+                   <div className="relative rounded-2xl border-[3px] border-amber-500/50 bg-amber-950/40 p-4 shadow-xl z-20 overflow-visible">
+                     <div className="flex items-center gap-2 mb-3 border-b border-amber-500/20 pb-2">
+                       <Zap className="h-5 w-5 text-amber-400" />
+                       <strong className="text-sm font-extrabold uppercase tracking-wider text-amber-300">Event Trigger</strong>
+                     </div>
+                     <div className="grid sm:grid-cols-2 gap-4">
+                       <div>
+                         <label className="mb-1 block text-[11px] font-semibold text-white/70">Trigger Condition</label>
+                         <select value={draft.trigger?.type} onChange={(e) => setDraft({ ...draft, trigger: { ...draft.trigger, type: e.target.value } })} className="field-control text-xs bg-black/40 border-amber-500/30">
+                           <option value="on_spawn">When Bot Connects</option>
+                           <option value="interval">Every X Seconds (Loop)</option>
+                           <option value="on_chat">On Chat Match</option>
+                           <option value="on_health_low">When Health Drops Below</option>
+                           <option value="on_inventory_full">When Inventory is Full</option>
+                           <option value="manual">Manual Trigger Only</option>
+                         </select>
+                       </div>
+                       {draft.trigger?.type === 'interval' && (
+                         <div>
+                           <label className="mb-1 block text-[11px] font-semibold text-white/70">Interval (Seconds)</label>
+                           <input type="number" min="5" value={draft.trigger?.params?.intervalSec || 60} onChange={(e) => setDraft({ ...draft, trigger: { ...draft.trigger, params: { ...draft.trigger?.params, intervalSec: parseInt(e.target.value) || 60 } } })} className="field-control text-xs bg-black/40 border-amber-500/30" />
+                         </div>
+                       )}
+                       {draft.trigger?.type === 'on_chat' && (
+                         <div>
+                           <label className="mb-1 block text-[11px] font-semibold text-white/70">Text Pattern</label>
+                           <input type="text" value={draft.trigger?.params?.pattern || ''} onChange={(e) => setDraft({ ...draft, trigger: { ...draft.trigger, params: { ...draft.trigger?.params, pattern: e.target.value } } })} className="field-control text-xs bg-black/40 border-amber-500/30" placeholder="e.g. login with" />
+                         </div>
+                       )}
+                       {draft.trigger?.type === 'on_health_low' && (
+                         <div>
+                           <label className="mb-1 block text-[11px] font-semibold text-white/70">Health Threshold</label>
+                           <input type="number" min="1" max="20" value={draft.trigger?.params?.healthThreshold || 8} onChange={(e) => setDraft({ ...draft, trigger: { ...draft.trigger, params: { ...draft.trigger?.params, healthThreshold: parseInt(e.target.value) || 8 } } })} className="field-control text-xs bg-black/40 border-amber-500/30" />
+                         </div>
+                       )}
+                     </div>
+                     {/* Puzzle Notch Bottom */}
+                     <div className="absolute -bottom-3 left-8 h-4 w-12 bg-amber-500/50 rounded-b-lg border-b-[3px] border-l-[3px] border-r-[3px] border-amber-500/50" />
+                   </div>
+
+                   {/* Blocks */}
+                   {draft.blocks.map((block, idx) => {
+                     const blockDef = BLOCK_CATALOG.find((b) => b.type === block.type);
+                     const IconComp = blockDef?.icon || Terminal;
+                     const isDragOver = dragOverIdx === idx;
+                     const isDragged = draggedIdx === idx;
+
+                     return (
+                       <div key={block.id || idx} className="relative z-10">
+                         {/* Drop Target Above Block */}
+                         <div 
+                           onDragOver={(e) => handleDragOverCanvas(e, idx)}
+                           onDrop={(e) => handleDropCanvas(e, idx)}
+                           className={cn("h-4 transition-all duration-200", isDragOver ? "h-16 flex items-center justify-center rounded-xl border-2 border-dashed border-sky-400 bg-sky-500/10" : "h-4")}
+                         >
+                           {isDragOver && <span className="text-xs font-bold text-sky-400 uppercase tracking-widest">Drop Here</span>}
+                         </div>
+
+                         {/* Block Component */}
+                         <div 
+                           draggable
+                           onDragStart={(e) => handleDragStartCanvas(e, idx)}
+                           onDragEnd={() => setDraggedIdx(null)}
+                           className={cn(
+                             'group relative rounded-2xl border-2 shadow-lg transition-all',
+                             isDragged ? 'opacity-30 scale-95' : 'opacity-100',
+                             blockDef?.color ? blockDef.color.replace('border-','border-opacity-100 border-').split(' ')[1] : 'border-white/20 bg-[#1a1a1a]',
+                             'bg-[#1a1a1a]'
+                           )}
+                         >
+                           {/* Puzzle Notch Top */}
+                           <div className={cn("absolute -top-[2px] left-[30px] h-[14px] w-12 rounded-b-md border-b-2 border-l-2 border-r-2 bg-[#1a1a1a]", blockDef?.color ? blockDef.color.split(' ')[1] : 'border-white/20')} />
+                           
+                           <div className="p-4 pt-5 flex items-start gap-4">
+                             {/* Drag Handle */}
+                             <div className="mt-1 cursor-grab active:cursor-grabbing text-white/30 hover:text-white transition">
+                               <GripVertical className="h-5 w-5" />
+                             </div>
+
+                             <div className="flex-1 space-y-3">
+                               <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-2">
+                                   <IconComp className={cn("h-4 w-4", blockDef?.color.split(' ').find(c => c.startsWith('text-')))} />
+                                   <strong className="text-sm font-bold text-white">{block.label}</strong>
+                                 </div>
+                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <button onClick={() => duplicateBlock(idx)} className="p-1.5 rounded hover:bg-white/10 text-white/50 hover:text-white" title="Duplicate">
+                                     <Copy className="h-3.5 w-3.5" />
+                                   </button>
+                                   <button onClick={() => removeBlock(idx)} className="p-1.5 rounded hover:bg-red-500/20 text-white/50 hover:text-red-400" title="Remove">
+                                     <Trash2 className="h-3.5 w-3.5" />
+                                   </button>
+                                 </div>
+                               </div>
+
+                               {/* Block Inputs */}
+                               <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                                 {block.type === 'action_command' && (
+                                   <input type="text" value={block.params?.command || ''} onChange={(e) => updateBlockParam(idx, 'command', e.target.value)} placeholder="e.g. /home safe" className="field-control font-mono text-xs w-full" />
+                                 )}
+                                 {block.type === 'action_chat' && (
+                                   <input type="text" value={block.params?.message || ''} onChange={(e) => updateBlockParam(idx, 'message', e.target.value)} placeholder="e.g. Hello!" className="field-control text-xs w-full" />
+                                 )}
+                                 {block.type === 'control_wait' && (
+                                   <div className="flex items-center gap-3">
+                                     <input type="number" min="50" step="100" value={block.params?.ms || 1000} onChange={(e) => updateBlockParam(idx, 'ms', parseInt(e.target.value) || 1000)} className="field-control font-mono text-xs w-32" />
+                                     <span className="text-xs font-mono text-white/40">{(block.params?.ms || 1000) / 1000} sec</span>
+                                   </div>
+                                 )}
+                                 {block.type === 'action_slot' && (
+                                   <input type="number" min="0" max="8" value={block.params?.slot || 0} onChange={(e) => updateBlockParam(idx, 'slot', parseInt(e.target.value) || 0)} className="field-control font-mono text-xs w-24" />
+                                 )}
+                                 {block.type === 'action_look' && (
+                                   <select value={block.params?.direction || 'random'} onChange={(e) => updateBlockParam(idx, 'direction', e.target.value)} className="field-control text-xs w-48">
+                                     <option value="random">Random Angle</option>
+                                     <option value="north">North (0°)</option>
+                                     <option value="south">South (180°)</option>
+                                     <option value="east">East (90°)</option>
+                                     <option value="west">West (270°)</option>
+                                   </select>
+                                 )}
+                                 {block.type === 'action_module' && (
+                                   <div className="flex gap-3">
+                                     <select value={block.params?.module || 'boxpvp'} onChange={(e) => updateBlockParam(idx, 'module', e.target.value)} className="field-control text-xs flex-1">
+                                       <option value="boxpvp">BoxPVP Miner</option>
+                                       <option value="cleaner">Inventory Cleaner</option>
+                                       <option value="candledropper">PV Candle Dropper</option>
+                                     </select>
+                                     <select value={block.params?.action || 'start'} onChange={(e) => updateBlockParam(idx, 'action', e.target.value)} className="field-control text-xs w-32">
+                                       <option value="start">Start</option>
+                                       <option value="stop">Stop</option>
+                                     </select>
+                                   </div>
+                                 )}
+                                 {block.type === 'notification_webhook' && (
+                                   <div className="space-y-2">
+                                     <input type="url" value={block.params?.webhookUrl || ''} onChange={(e) => updateBlockParam(idx, 'webhookUrl', e.target.value)} placeholder="Discord Webhook URL" className="field-control text-xs w-full" />
+                                     <input type="text" value={block.params?.content || ''} onChange={(e) => updateBlockParam(idx, 'content', e.target.value)} placeholder="Alert text" className="field-control text-xs w-full" />
+                                   </div>
+                                 )}
+                               </div>
+                             </div>
+                           </div>
+
+                           {/* Puzzle Notch Bottom */}
+                           <div className={cn("absolute -bottom-[14px] left-[30px] h-[14px] w-12 rounded-b-md border-b-2 border-l-2 border-r-2 bg-[#1a1a1a]", blockDef?.color ? blockDef.color.split(' ')[1] : 'border-white/20')} />
+                         </div>
+                       </div>
+                     );
+                   })}
+
+                   {/* End Drop Zone */}
+                   <div 
+                     onDragOver={(e) => { e.preventDefault(); setDragOverIdx('end'); }}
+                     onDrop={handleDropEndZone}
+                     className={cn("h-32 transition-all duration-200 mt-4", dragOverIdx === 'end' ? "flex items-center justify-center rounded-xl border-2 border-dashed border-sky-400 bg-sky-500/10" : "")}
+                   >
+                     {dragOverIdx === 'end' ? (
+                       <span className="text-xs font-bold text-sky-400 uppercase tracking-widest">Drop Block Here</span>
+                     ) : (
+                       <div className="flex flex-col items-center justify-center h-full opacity-20 hover:opacity-50 transition border-2 border-dashed border-white/20 rounded-2xl mx-12">
+                         <ArrowDown className="h-6 w-6 mb-2" />
+                         <span className="text-xs font-bold uppercase tracking-widest">Drag & Drop More Blocks</span>
+                       </div>
+                     )}
+                   </div>
+
+                 </div>
+               </div>
+             </div>
+             
+             {/* Simulator Overlay inside Canvas */}
+             {simLogs.length > 0 && (
+                <div className="absolute bottom-6 right-6 w-96 rounded-2xl border border-white/10 bg-black/95 p-4 shadow-2xl backdrop-blur-md z-50">
+                  <div className="flex items-center justify-between text-white/60 border-b border-white/10 pb-2 mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2"><Terminal className="h-3.5 w-3.5"/> Test Runner</span>
+                    <button onClick={() => setSimLogs([])} className="hover:text-white"><X className="h-4 w-4"/></button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 console-scrollbar font-mono text-[10px] text-white/80">
+                    {simLogs.map((l, i) => (
+                      <div key={i} className={cn("leading-relaxed", l.includes('error') ? 'text-red-400' : l.includes('step') ? 'text-sky-300' : '')}>{l}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+        </div>
+        
+        {/* Preset Modal */}
+        <Modal open={presetsOpen} onClose={() => setPresetsOpen(false)} title="Preset Library" size="lg">
+          <div className="grid gap-3 sm:grid-cols-2 max-h-[500px] overflow-y-auto console-scrollbar">
+            {WORKFLOW_PRESETS.map((preset, idx) => (
+              <div key={idx} className="flex flex-col justify-between rounded-xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/30 cursor-pointer" onClick={() => loadPreset(preset)}>
+                <div>
+                  <h4 className="text-sm font-bold text-white">{preset.name}</h4>
+                  <p className="mt-1 text-xs text-white/50 leading-relaxed">{preset.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      </div>
+    );
+  }
+
+  // STANDARD LIST VIEW
   return (
     <div className="space-y-6">
       <PageHeader
@@ -659,27 +881,13 @@ export default function AutomationsPage() {
         description="Construct visual, block-based bot routines, reactive event triggers, interval loops, and cross-cluster command pipelines."
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setPresetsOpen(true)}
-              className="gap-1.5"
-            >
-              <Sparkles className="h-3.5 w-3.5" /> Preset Library
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => openStudio()}
-              className="gap-1.5 shadow-sm"
-            >
-              <Plus className="h-3.5 w-3.5" /> New Automation
+            <Button size="sm" variant="primary" onClick={() => openStudio()} className="gap-1.5 shadow-sm">
+              <Plus className="h-3.5 w-3.5" /> New Automation Canvas
             </Button>
           </div>
         }
       />
 
-      {/* Metric Cards Banner */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Panel className="p-4 flex items-center justify-between">
           <div>
@@ -691,183 +899,47 @@ export default function AutomationsPage() {
         <Panel className="p-4 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">Active Flows</span>
-            <div className="text-2xl font-black text-white">
-              {automations.filter((a) => a.enabled).length}
-            </div>
+            <div className="text-2xl font-black text-white">{automations.filter((a) => a.enabled).length}</div>
           </div>
           <Zap className="h-5 w-5 text-white/40" />
         </Panel>
         <Panel className="p-4 flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">Interval Ticks</span>
-            <div className="text-2xl font-black text-white">
-              {automations.filter((a) => a.trigger?.type === 'interval' && a.enabled).length}
-            </div>
-          </div>
-          <Clock3 className="h-5 w-5 text-white/40" />
-        </Panel>
-        <Panel className="p-4 flex items-center justify-between">
-          <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">Online Fleet</span>
-            <div className="text-2xl font-black text-white">
-              {bots.filter((b) => b.status === 'running').length} / {bots.length}
-            </div>
+            <div className="text-2xl font-black text-white">{bots.filter((b) => b.status === 'running').length}</div>
           </div>
           <Bot className="h-5 w-5 text-white/40" />
         </Panel>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search workflows by name, trigger, command..."
-            className="w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-4 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-white/30"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-1">
-          {[
-            { id: 'all', label: `All (${automations.length})` },
-            { id: 'active', label: `Active (${automations.filter((a) => a.enabled).length})` },
-            { id: 'interval', label: 'Intervals' },
-            { id: 'event', label: 'Events' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedFilter(tab.id)}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95',
-                selectedFilter === tab.id
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-white/60 hover:text-white'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Workflows Grid */}
       {filteredAutomations.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredAutomations.map((auto) => {
             const isInterval = auto.trigger?.type === 'interval';
-            const triggerLabel = isInterval
-              ? `Every ${auto.trigger?.params?.intervalSec || 60}s`
-              : auto.trigger?.type === 'on_spawn'
-              ? 'On Bot Connect'
-              : auto.trigger?.type === 'on_chat'
-              ? `Chat: "${auto.trigger?.params?.pattern || ''}"`
-              : auto.trigger?.type === 'on_health_low'
-              ? `Health < ${auto.trigger?.params?.healthThreshold || 10}`
-              : auto.trigger?.type === 'on_inventory_full'
-              ? 'Inventory Full'
-              : 'Manual Trigger';
+            const triggerLabel = isInterval ? `Every ${auto.trigger?.params?.intervalSec || 60}s` : auto.trigger?.type === 'on_spawn' ? 'On Bot Connect' : 'Event Driven';
 
             return (
-              <Panel
-                key={auto.id}
-                className="group relative flex flex-col justify-between p-5 transition hover:border-white/20"
-              >
+              <Panel key={auto.id} className="group relative flex flex-col justify-between p-5 transition hover:border-white/20">
                 <div>
-                  <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 font-mono text-[11px] font-bold text-white shadow-sm">
-                      {isInterval ? (
-                        <Clock3 className="h-3.5 w-3.5 text-white/80" />
-                      ) : (
-                        <Zap className="h-3.5 w-3.5 text-white/80" />
-                      )}
-                      <span>{triggerLabel}</span>
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                    <span className="inline-flex items-center gap-1.5 rounded border border-white/10 bg-white/[0.05] px-2 py-1 font-mono text-[10px] font-bold text-white">
+                      {isInterval ? <Clock3 className="h-3 w-3" /> : <Zap className="h-3 w-3" />}
+                      {triggerLabel}
                     </span>
-
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] uppercase font-bold text-white/40">
-                        {auto.category || 'General'}
-                      </span>
-                      <Switch
-                        checked={auto.enabled}
-                        onChange={(e) => toggleWorkflow(auto, e)}
-                      />
-                    </div>
+                    <Switch checked={auto.enabled} onChange={(e) => toggleWorkflow(auto, e)} />
                   </div>
-
                   <div className="mt-3.5">
-                    <h3 className="text-base font-extrabold text-white tracking-tight">
-                      {auto.name}
-                    </h3>
-                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/50">
-                      {auto.description || 'Custom sequential bot workflow.'}
-                    </p>
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/60">
-                      <Users className="h-3.5 w-3.5 text-white/40" />
-                      {auto.targetMode === 'all'
-                        ? 'All Bots Scope'
-                        : auto.targetMode === 'category'
-                        ? `Category: ${auto.targetCategory}`
-                        : `${(auto.targetBotIds || []).length} Specific Bots`}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/50 p-3 space-y-1.5">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-white/40">
-                      Block Chain ({auto.blocks?.length || 0} Steps)
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 max-h-20 overflow-hidden">
-                      {(auto.blocks || []).slice(0, 4).map((blk, idx) => (
-                        <span
-                          key={blk.id || idx}
-                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-white/80"
-                        >
-                          <span className="text-white/40">#{idx + 1}</span>
-                          <span className="truncate max-w-[110px]">{blk.label}</span>
-                        </span>
-                      ))}
-                      {(auto.blocks || []).length > 4 && (
-                        <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-white/40">
-                          +{(auto.blocks || []).length - 4} more
-                        </span>
-                      )}
-                    </div>
+                    <h3 className="text-base font-bold text-white truncate">{auto.name}</h3>
+                    <p className="mt-1 line-clamp-2 text-xs text-white/50">{auto.description || 'Custom workflow.'}</p>
                   </div>
                 </div>
-
                 <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-3.5">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={(e) => runWorkflow(auto, e)}
-                    loading={runningId === auto.id}
-                    className="gap-1.5 text-xs font-bold"
-                  >
-                    <Play className="h-3 w-3" /> Run Now
+                  <Button size="sm" variant="primary" onClick={(e) => runWorkflow(auto, e)} loading={runningId === auto.id} className="gap-1.5 text-xs font-bold">
+                    <Play className="h-3 w-3" /> Run
                   </Button>
-
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openStudio(auto)}
-                      className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white transition active:scale-95"
-                      title="Edit in Visual Studio"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => deleteWorkflow(auto, e)}
-                      className="rounded-lg p-2 text-white/40 hover:bg-white/10 hover:text-white transition active:scale-95"
-                      title="Delete Workflow"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <button onClick={() => openStudio(auto)} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white transition"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={(e) => deleteWorkflow(auto, e)} className="rounded-lg p-2 text-white/40 hover:bg-white/10 hover:text-white transition"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
               </Panel>
@@ -878,620 +950,10 @@ export default function AutomationsPage() {
         <EmptyState
           icon={Workflow}
           title="No automations found"
-          description={
-            searchQuery
-              ? 'Try changing your search query or filter.'
-              : 'Create your first Scratch-style visual automation workflow to begin.'
-          }
-          action={
-            <Button variant="primary" onClick={() => openStudio()}>
-              <Plus className="h-4 w-4" /> Create Workflow
-            </Button>
-          }
+          description="Create your first visual automation workflow."
+          action={<Button variant="primary" onClick={() => openStudio()}><Plus className="h-4 w-4" /> Create Workspace</Button>}
         />
       )}
-
-      {/* Studio Modal */}
-      <Modal
-        open={studioOpen}
-        onClose={() => setStudioOpen(false)}
-        title={editingId ? 'Edit Automation Workflow' : 'Visual Scratch Studio'}
-        description="Construct reactive bot routines using Scratch-inspired puzzle blocks and interactive parameters."
-        size="4xl"
-        footer={
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                onClick={runSimulationTest}
-                loading={simulating}
-                className="gap-1.5 text-xs font-bold"
-              >
-                <CirclePlay className="h-3.5 w-3.5" /> Test Run
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" onClick={() => setStudioOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={saveWorkflow}
-                loading={saving}
-                className="gap-2 px-6 font-bold"
-              >
-                <Check className="h-4 w-4" /> Save Workflow
-              </Button>
-            </div>
-          </div>
-        }
-      >
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-white/15 bg-white/[0.02] p-4 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">
-                  Workflow Name
-                </label>
-                <input
-                  type="text"
-                  value={draft.name}
-                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                  placeholder="e.g. AFK Shard Farmer"
-                  className="field-control"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  value={draft.category}
-                  onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-                  placeholder="e.g. Mining, Economy, AFK"
-                  className="field-control"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">
-                  Target Fleet Scope
-                </label>
-                <select
-                  value={draft.targetMode}
-                  onChange={(e) => setDraft({ ...draft, targetMode: e.target.value })}
-                  className="field-control"
-                >
-                  <option value="all">All Managed Bots</option>
-                  <option value="category">Fleet Category</option>
-                  <option value="bots">Specific Selected Bots</option>
-                </select>
-              </div>
-            </div>
-
-            {draft.targetMode === 'category' && (
-              <div className="pt-2 border-t border-white/[0.06]">
-                <label className="mb-1.5 block text-xs font-semibold text-white/60">
-                  Target Category Name
-                </label>
-                <input
-                  type="text"
-                  value={draft.targetCategory}
-                  onChange={(e) => setDraft({ ...draft, targetCategory: e.target.value })}
-                  placeholder="e.g. Mining"
-                  className="field-control max-w-sm"
-                />
-              </div>
-            )}
-
-            {draft.targetMode === 'bots' && (
-              <div className="pt-2 border-t border-white/[0.06] space-y-2">
-                <label className="block text-xs font-semibold text-white/60">
-                  Select Target Bots ({draft.targetBotIds.length} Selected)
-                </label>
-                <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto console-scrollbar">
-                  {bots.map((b) => {
-                    const selected = draft.targetBotIds.includes(b.id);
-                    return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => {
-                          const updated = selected
-                            ? draft.targetBotIds.filter((id) => id !== b.id)
-                            : [...draft.targetBotIds, b.id];
-                          setDraft({ ...draft, targetBotIds: updated });
-                        }}
-                        className={cn(
-                          'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-mono transition',
-                          selected
-                            ? 'border-white bg-white text-black font-bold shadow-sm'
-                            : 'border-white/10 bg-white/[0.04] text-white/60 hover:text-white'
-                        )}
-                      >
-                        <span>{b.config?.username || b.id}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-4 space-y-4">
-              <div className="rounded-2xl border border-white/12 bg-black/60 p-4 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-white">
-                  <Boxes className="h-4 w-4 text-white/70" /> Block Palette
-                </div>
-                <p className="text-[11px] text-white/45">
-                  Click any block below to append it to your visual execution stack.
-                </p>
-
-                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 console-scrollbar">
-                  {BLOCK_CATALOG.map((item) => {
-                    const IconComp = item.icon;
-                    return (
-                      <button
-                        key={item.type}
-                        type="button"
-                        onClick={() => addBlockToDraft(item)}
-                        className="group flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-left transition hover:border-white/25 hover:bg-white/[0.08] active:scale-[0.98]"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
-                            <IconComp className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="min-w-0">
-                            <strong className="block truncate text-xs font-bold text-white">
-                              {item.label}
-                            </strong>
-                            <span className="block truncate text-[10px] text-white/40">
-                              {item.desc}
-                            </span>
-                          </div>
-                        </div>
-                        <Plus className="h-3.5 w-3.5 text-white/30 group-hover:text-white transition" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {simLogs.length > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-black/90 p-3 space-y-2 font-mono text-[11px]">
-                  <div className="flex items-center justify-between text-white/50 border-b border-white/10 pb-1.5">
-                    <span className="font-bold uppercase tracking-wider">Test Simulator</span>
-                    <button
-                      type="button"
-                      onClick={() => setSimLogs([])}
-                      className="text-[10px] hover:text-white"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  <div className="max-h-36 overflow-y-auto space-y-1 console-scrollbar text-white/80">
-                    {simLogs.map((l, i) => (
-                      <div key={i} className="leading-tight">{l}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="lg:col-span-8 space-y-4">
-              <div className="rounded-2xl border border-white/15 bg-black/40 p-4 sm:p-5 space-y-4">
-                <div className="relative rounded-2xl border-2 border-amber-500/40 bg-amber-950/20 p-4 shadow-md space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/20 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-amber-400" />
-                      <strong className="text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                        When Trigger Occurs (Event Hat)
-                      </strong>
-                    </div>
-                    <span className="rounded bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
-                      Starting Hat
-                    </span>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                        Trigger Type
-                      </label>
-                      <select
-                        value={draft.trigger?.type}
-                        onChange={(e) =>
-                          setDraft({
-                            ...draft,
-                            trigger: { ...draft.trigger, type: e.target.value },
-                          })
-                        }
-                        className="field-control text-xs"
-                      >
-                        <option value="on_spawn">When Bot Connects / Spawns</option>
-                        <option value="interval">Every X Seconds (Interval Loop)</option>
-                        <option value="on_chat">On Chat Message Matches Pattern</option>
-                        <option value="on_health_low">When Health Drops Below Threshold</option>
-                        <option value="on_inventory_full">When Inventory is Full</option>
-                        <option value="manual">Manual / Instant Execution Only</option>
-                      </select>
-                    </div>
-
-                    {draft.trigger?.type === 'interval' && (
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                          Interval Duration (Seconds)
-                        </label>
-                        <input
-                          type="number"
-                          min="5"
-                          max="3600"
-                          value={draft.trigger?.params?.intervalSec || 60}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              trigger: {
-                                ...draft.trigger,
-                                params: {
-                                  ...draft.trigger?.params,
-                                  intervalSec: parseInt(e.target.value) || 60,
-                                },
-                              },
-                            })
-                          }
-                          className="field-control text-xs"
-                        />
-                      </div>
-                    )}
-
-                    {draft.trigger?.type === 'on_chat' && (
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                          Match Text Pattern
-                        </label>
-                        <input
-                          type="text"
-                          value={draft.trigger?.params?.pattern || ''}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              trigger: {
-                                ...draft.trigger,
-                                params: {
-                                  ...draft.trigger?.params,
-                                  pattern: e.target.value,
-                                },
-                              },
-                            })
-                          }
-                          placeholder="e.g. login with /login, payed you"
-                          className="field-control text-xs"
-                        />
-                      </div>
-                    )}
-
-                    {draft.trigger?.type === 'on_health_low' && (
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                          Health Threshold (0 - 20)
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="20"
-                          value={draft.trigger?.params?.healthThreshold || 8}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              trigger: {
-                                ...draft.trigger,
-                                params: {
-                                  ...draft.trigger?.params,
-                                  healthThreshold: parseInt(e.target.value) || 8,
-                                },
-                              },
-                            })
-                          }
-                          className="field-control text-xs"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-center -my-2">
-                  <div className="h-4 w-1 bg-white/20 rounded-full" />
-                </div>
-
-                <div className="space-y-3">
-                  {draft.blocks.map((block, idx) => {
-                    const blockDef = BLOCK_CATALOG.find((b) => b.type === block.type);
-                    const IconComp = blockDef?.icon || Terminal;
-
-                    return (
-                      <div
-                        key={block.id || idx}
-                        className={cn(
-                          'group relative rounded-2xl border p-4 transition-all duration-200 shadow-sm space-y-3',
-                          blockDef?.color || 'bg-white/[0.04] border-white/10'
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="flex h-5 w-5 items-center justify-center rounded bg-white text-black font-mono text-[10px] font-black">
-                              {idx + 1}
-                            </span>
-                            <IconComp className="h-3.5 w-3.5 text-white" />
-                            <strong className="truncate text-xs font-bold text-white">
-                              {block.label}
-                            </strong>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => moveBlock(idx, -1)}
-                              disabled={idx === 0}
-                              className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white transition disabled:opacity-20"
-                              title="Move Up"
-                            >
-                              <ChevronUp className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveBlock(idx, 1)}
-                              disabled={idx === draft.blocks.length - 1}
-                              className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white transition disabled:opacity-20"
-                              title="Move Down"
-                            >
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => duplicateBlock(idx)}
-                              className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white transition"
-                              title="Duplicate Block"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeBlock(idx)}
-                              className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white transition"
-                              title="Remove Block"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 text-xs">
-                          {block.type === 'action_command' && (
-                            <div>
-                              <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                Command Line
-                              </label>
-                              <input
-                                type="text"
-                                value={block.params?.command || ''}
-                                onChange={(e) => updateBlockParam(idx, 'command', e.target.value)}
-                                placeholder="e.g. /home safe, /pay Admin 500"
-                                className="field-control font-mono text-xs"
-                              />
-                            </div>
-                          )}
-
-                          {block.type === 'action_chat' && (
-                            <div>
-                              <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                Chat Message
-                              </label>
-                              <input
-                                type="text"
-                                value={block.params?.message || ''}
-                                onChange={(e) => updateBlockParam(idx, 'message', e.target.value)}
-                                placeholder="e.g. Hello everyone!"
-                                className="field-control text-xs"
-                              />
-                            </div>
-                          )}
-
-                          {block.type === 'control_wait' && (
-                            <div>
-                              <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                Delay Duration (ms)
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min="50"
-                                  max="60000"
-                                  step="100"
-                                  value={block.params?.ms || 1000}
-                                  onChange={(e) =>
-                                    updateBlockParam(idx, 'ms', parseInt(e.target.value) || 1000)
-                                  }
-                                  className="field-control font-mono text-xs"
-                                />
-                                <span className="font-mono text-xs text-white/40 shrink-0">
-                                  {((block.params?.ms || 1000) / 1000).toFixed(1)}s
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {block.type === 'action_slot' && (
-                            <div>
-                              <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                Hotbar Slot Number (0 - 8)
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                max="8"
-                                value={block.params?.slot || 0}
-                                onChange={(e) =>
-                                  updateBlockParam(idx, 'slot', parseInt(e.target.value) || 0)
-                                }
-                                className="field-control font-mono text-xs"
-                              />
-                            </div>
-                          )}
-
-                          {block.type === 'action_look' && (
-                            <div>
-                              <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                View Direction
-                              </label>
-                              <select
-                                value={block.params?.direction || 'random'}
-                                onChange={(e) => updateBlockParam(idx, 'direction', e.target.value)}
-                                className="field-control text-xs"
-                              >
-                                <option value="random">Random View Angle</option>
-                                <option value="north">North (0°)</option>
-                                <option value="south">South (180°)</option>
-                                <option value="east">East (90°)</option>
-                                <option value="west">West (270°)</option>
-                              </select>
-                            </div>
-                          )}
-
-                          {block.type === 'action_module' && (
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <div>
-                                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                  Module Name
-                                </label>
-                                <select
-                                  value={block.params?.module || 'boxpvp'}
-                                  onChange={(e) => updateBlockParam(idx, 'module', e.target.value)}
-                                  className="field-control text-xs"
-                                >
-                                  <option value="boxpvp">BoxPVP Miner</option>
-                                  <option value="cleaner">Inventory Cleaner</option>
-                                  <option value="candledropper">PV Candle Dropper</option>
-                                  <option value="bonecollector">Bone Collector</option>
-                                  <option value="tpkiller">TP Killer</option>
-                                  <option value="mineandsell">Auto Mine & Sell</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                  Action
-                                </label>
-                                <select
-                                  value={block.params?.action || 'start'}
-                                  onChange={(e) => updateBlockParam(idx, 'action', e.target.value)}
-                                  className="field-control text-xs"
-                                >
-                                  <option value="start">Start Routine</option>
-                                  <option value="stop">Stop Routine</option>
-                                </select>
-                              </div>
-                            </div>
-                          )}
-
-                          {block.type === 'notification_webhook' && (
-                            <div className="space-y-2">
-                              <div>
-                                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                  Discord Webhook URL
-                                </label>
-                                <input
-                                  type="url"
-                                  value={block.params?.webhookUrl || ''}
-                                  onChange={(e) =>
-                                    updateBlockParam(idx, 'webhookUrl', e.target.value)
-                                  }
-                                  placeholder="https://discord.com/api/webhooks/..."
-                                  className="field-control text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                  Message Content
-                                </label>
-                                <input
-                                  type="text"
-                                  value={block.params?.content || ''}
-                                  onChange={(e) =>
-                                    updateBlockParam(idx, 'content', e.target.value)
-                                  }
-                                  placeholder="Notification alert text"
-                                  className="field-control text-xs"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => addBlockToDraft(BLOCK_CATALOG[0])}
-                    className="w-full justify-center gap-1.5 border-dashed"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Append Action Block
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Preset Library Modal */}
-      <Modal
-        open={presetsOpen}
-        onClose={() => setPresetsOpen(false)}
-        title="Automation Preset Library"
-        description="Select any pre-configured automation template to load into the Scratch visual studio."
-        size="lg"
-      >
-        <div className="grid gap-3 sm:grid-cols-2 max-h-[500px] overflow-y-auto pr-1 console-scrollbar">
-          {WORKFLOW_PRESETS.map((preset, idx) => (
-            <div
-              key={idx}
-              className="flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.05]"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
-                  <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white">
-                    {preset.category}
-                  </span>
-                  <span className="text-[10px] font-mono text-white/40">
-                    {preset.blocks.length} Blocks
-                  </span>
-                </div>
-                <h4 className="mt-2 text-sm font-extrabold text-white">{preset.name}</h4>
-                <p className="mt-1 text-xs text-white/50 leading-relaxed">
-                  {preset.description}
-                </p>
-              </div>
-
-              <div className="mt-4 pt-2 border-t border-white/[0.06] flex items-center justify-end">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => loadPreset(preset)}
-                  className="gap-1.5 text-xs font-bold"
-                >
-                  <Sparkles className="h-3 w-3" /> Load Preset
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Modal>
     </div>
   );
 }

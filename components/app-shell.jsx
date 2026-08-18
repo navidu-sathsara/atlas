@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, Bot, Braces, CalendarClock, Command, Gauge,
+  Activity, Bot, Box, Braces, CalendarClock, Command, Gauge,
   LogOut, Menu, Network, PanelLeftClose, PanelLeftOpen, Search, Settings, Users, Workflow, X,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers';
@@ -110,7 +110,8 @@ function ShellFrame({ children }) {
   const sidebar = (
     <>
       <div className={cn('flex h-[68px] shrink-0 items-center border-b border-white/[0.08]', collapsed ? 'justify-center px-2' : 'px-5')}>
-        <Link href="/overview" className="group flex min-w-0 items-center">
+        <Link href="/overview" className="group flex min-w-0 items-center gap-3">
+          <Box className={cn("shrink-0 text-white transition-transform group-hover:scale-110", collapsed ? "h-6 w-6" : "h-5 w-5")} />
           {!collapsed && (
             <span className="min-w-0">
               <strong className="block truncate text-base font-bold tracking-tight text-white">Native</strong>
@@ -162,7 +163,7 @@ function ShellFrame({ children }) {
 
       <div className="shrink-0 border-t border-white/[0.08] p-3">
         <div className={cn('mb-2 flex items-center rounded-xl border border-white/[0.08] bg-white/[0.04] p-2.5', collapsed ? 'justify-center' : 'gap-3')}>
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-xs font-bold uppercase text-white shadow-sm">{user.email.slice(0, 2)}</span>
+          <img src="https://mc-heads.net/avatar/steelchari67/100" alt="steelchari67 avatar" className="h-9 w-9 shrink-0 rounded-xl bg-white/15 object-cover shadow-sm rendering-pixelated" />
           {!collapsed && (
             <span className="min-w-0 flex-1">
               <strong className="block truncate text-[13px] font-semibold text-white">{user.email}</strong>
