@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity, Bot, Braces, CalendarClock, Command, Gauge,
-  LogOut, Menu, Network, PanelLeftClose, PanelLeftOpen, Search, Settings, Users, X,
+  LogOut, Menu, Network, PanelLeftClose, PanelLeftOpen, Search, Settings, Users, Workflow, X,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers';
 import { DashboardProvider, useDashboard } from '@/components/dashboard-provider';
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/overview', label: 'Overview', icon: Gauge, group: 'Workspace' },
   { href: '/bots', label: 'Bots', icon: Bot, group: 'Workspace' },
   { href: '/network', label: 'Network', icon: Network, group: 'Workspace' },
+  { href: '/automations', label: 'Automations', icon: Workflow, group: 'Automation' },
   { href: '/aliases', label: 'Aliases', icon: Command, group: 'Automation' },
   { href: '/scripts', label: 'Scripts', icon: Braces, group: 'Automation' },
   { href: '/schedules', label: 'Schedules', icon: CalendarClock, group: 'Automation' },

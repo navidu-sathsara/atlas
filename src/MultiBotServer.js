@@ -677,6 +677,145 @@ function sendCommand(id, cmd) {
     } catch (e) { return { ok: false, reason: e.message }; }
 }
 
+// ── Visual Automation Engine (Scratch-Style) ─────────────────────────
+const activeAutomationIntervals = new Map();
+
+async function executeAutomationOnBot(botId, automation) {
+    const s = getBotState(botId);
+    if (!s || !s.proc) return { ok: false, reason: `Bot ${botId} is not running.` };
+
+    const logs = [];
+    const pushAutoLog = (msg) => {
+        const line = `[automation] ${msg}`;
+        logs.push(line);
+        pushLog(botId, line);
+    };
+
+    pushAutoLog(`Starting sequence: "${automation.name}"`);
+
+    for (let i = 0; i < (automation.blocks || []).length; i++) {
+        const block = automation.blocks[i];
+        const params = block.params || {};
+
+        try {
+            switch (block.type) {
+                case 'control_wait':
+                case 'control_delay': {
+                    const ms = Math.max(50, Math.min(60000, Number(params.ms || (params.seconds ? params.seconds * 1000 : 1000)) || 1000));
+                    pushAutoLog(`Step ${i + 1}: Waiting ${(ms / 1000).toFixed(1)}s...`);
+                    await new Promise((resolve) => setTimeout(resolve, ms));
+                    break;
+                }
+                case 'action_command':
+                case 'action_chat': {
+                    const rawCmd = String(params.command || params.message || '').trim();
+                    if (rawCmd) {
+                        pushAutoLog(`Step ${i + 1}: Executing command: ${rawCmd}`);
+                        sendCommand(botId, rawCmd);
+                    }
+                    break;
+                }
+                case 'action_jump': {
+                    pushAutoLog(`Step ${i + 1}: Executing jump`);
+                    sendCommand(botId, '!jump');
+                    break;
+                }
+                case 'action_look': {
+                    const dir = params.direction || 'random';
+                    pushAutoLog(`Step ${i + 1}: Rotating view (${dir})`);
+                    sendCommand(botId, `!look ${dir}`);
+                    break;
+                }
+                case 'action_slot': {
+                    const slot = parseInt(params.slot) || 0;
+                    pushAutoLog(`Step ${i + 1}: Selecting hotbar slot ${slot}`);
+                    sendCommand(botId, `!slot ${slot}`);
+                    break;
+                }
+                case 'action_drop': {
+                    const item = params.item ? String(params.item).trim() : '';
+                    pushAutoLog(`Step ${i + 1}: Dropping item ${item || 'inventory'}`);
+                    sendCommand(botId, `!drop ${item}`);
+                    break;
+                }
+                case 'action_module': {
+                    const modName = String(params.module || 'boxpvp').trim();
+                    const action = params.action || 'start';
+                    pushAutoLog(`Step ${i + 1}: Triggering module ${modName} (${action})`);
+                    sendCommand(botId, `!${modName} ${action}`);
+                    break;
+                }
+                case 'condition_if': {
+                    pushAutoLog(`Step ${i + 1}: Logic check (${params.field || 'chat'} ${params.operator || 'contains'} "${params.value || ''}")`);
+                    break;
+                }
+                case 'notification_log': {
+                    const msg = String(params.message || '').trim();
+                    pushAutoLog(`Step ${i + 1}: Custom Log -> ${msg}`);
+                    break;
+                }
+                case 'notification_webhook': {
+                    const url = String(params.webhookUrl || '').trim();
+                    const content = String(params.content || `Automation "${automation.name}" executed on ${botId}`).trim();
+                    if (url) {
+                        pushAutoLog(`Step ${i + 1}: Sending Discord webhook alert...`);
+                        fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content })
+                        }).catch(() => {});
+                    }
+                    break;
+                }
+                default: {
+                    pushAutoLog(`Step ${i + 1}: Custom step: ${block.label || block.type}`);
+                    break;
+                }
+            }
+        } catch (err) {
+            pushAutoLog(`Step ${i + 1} Error: ${err.message}`);
+        }
+    }
+
+    pushAutoLog(`Finished sequence: "${automation.name}"`);
+    return { ok: true, logs };
+}
+
+function resolveTargetBotsForAutomation(user, automation) {
+    if (!liveState) return [];
+    const visibleBots = users.filterBots(user, liveState.bots);
+    if (automation.targetMode === 'category') {
+        const cat = String(automation.targetCategory || '').trim().toLowerCase();
+        return visibleBots.filter(b => String(b.config?.category || 'uncategorized').trim().toLowerCase() === cat);
+    }
+    if (automation.targetMode === 'bots') {
+        const ids = new Set(automation.targetBotIds || []);
+        return visibleBots.filter(b => ids.has(b.id));
+    }
+    return visibleBots;
+}
+
+function syncAutomationInterval(userId, automation) {
+    if (!automation || !automation.id) return;
+    if (activeAutomationIntervals.has(automation.id)) {
+        clearInterval(activeAutomationIntervals.get(automation.id));
+        activeAutomationIntervals.delete(automation.id);
+    }
+    if (automation.enabled && automation.trigger?.type === 'interval') {
+        const sec = Math.max(5, Math.min(86400, parseInt(automation.trigger?.params?.intervalSec) || 60));
+        const timer = setInterval(() => {
+            const user = users.findById(userId);
+            if (!user) return;
+            const targetBots = resolveTargetBotsForAutomation(user, automation);
+            targetBots.forEach(b => {
+                const s = getBotState(b.id);
+                if (s && s.proc) executeAutomationOnBot(b.id, automation).catch(() => {});
+            });
+        }, sec * 1000);
+        activeAutomationIntervals.set(automation.id, timer);
+    }
+}
+
 // ─── HTTP helpers ──────────────────────────────────────────────────────
 function readJson(req) {
     return new Promise((resolve, reject) => {
@@ -1086,6 +1225,74 @@ async function handleHttp(req, res, state) {
             }
             return json(res, result.ok ? 200 : 404, result);
         }
+        return json(res, 405, { ok: false, reason: 'Method not allowed' });
+    }
+
+    // ── Visual Automations Engine (Scratch-Style) ────────────────────
+    if (p === '/api/automations' || p.startsWith('/api/automations/')) {
+        const user = currentUser(req);
+        const sub = p.slice('/api/automations'.length).replace(/^\//, '');
+        const parts = sub.split('/').filter(Boolean);
+
+        if (req.method === 'GET' && parts.length === 0) {
+            return json(res, 200, { ok: true, automations: workspaces.automations(user.id) });
+        }
+
+        if (req.method === 'POST' && parts.length === 0) {
+            const body = await readJson(req);
+            const result = workspaces.createAutomation(user.id, body);
+            if (result.ok) syncAutomationInterval(user.id, result.automation);
+            return json(res, result.ok ? 201 : 400, result);
+        }
+
+        if (parts.length === 1) {
+            const id = parts[0];
+            if (req.method === 'GET') {
+                const auto = workspaces.getAutomation(user.id, id);
+                return json(res, auto ? 200 : 404, auto ? { ok: true, automation: auto } : { ok: false, reason: 'Not found' });
+            }
+            if (req.method === 'PATCH') {
+                const body = await readJson(req);
+                const result = workspaces.updateAutomation(user.id, id, body);
+                if (result.ok) syncAutomationInterval(user.id, result.automation);
+                return json(res, result.ok ? 200 : 404, result);
+            }
+            if (req.method === 'DELETE') {
+                const auto = workspaces.getAutomation(user.id, id);
+                if (auto && activeAutomationIntervals.has(id)) {
+                    clearInterval(activeAutomationIntervals.get(id));
+                    activeAutomationIntervals.delete(id);
+                }
+                const result = workspaces.deleteAutomation(user.id, id);
+                return json(res, result.ok ? 200 : 404, result);
+            }
+        }
+
+        if (parts.length === 2 && parts[1] === 'run' && req.method === 'POST') {
+            const id = parts[0];
+            const auto = workspaces.getAutomation(user.id, id);
+            if (!auto) return json(res, 404, { ok: false, reason: 'Automation not found' });
+            const targetBots = resolveTargetBotsForAutomation(user, auto);
+            if (!targetBots.length) {
+                return json(res, 400, { ok: false, reason: 'No target bots available or matching criteria.' });
+            }
+            const executionResults = [];
+            for (const b of targetBots) {
+                const resBot = await executeAutomationOnBot(b.id, auto);
+                executionResults.push({ botId: b.id, ...resBot });
+            }
+            return json(res, 200, { ok: true, count: targetBots.length, results: executionResults });
+        }
+
+        if (parts.length === 2 && parts[1] === 'toggle' && req.method === 'POST') {
+            const id = parts[0];
+            const auto = workspaces.getAutomation(user.id, id);
+            if (!auto) return json(res, 404, { ok: false, reason: 'Automation not found' });
+            const result = workspaces.updateAutomation(user.id, id, { enabled: !auto.enabled });
+            if (result.ok) syncAutomationInterval(user.id, result.automation);
+            return json(res, 200, result);
+        }
+
         return json(res, 405, { ok: false, reason: 'Method not allowed' });
     }
 

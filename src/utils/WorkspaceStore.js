@@ -42,7 +42,8 @@ function defaultWorkspace() {
         version: 1,
         preferences: { ...DEFAULT_PREFERENCES },
         aliases: [],
-        scripts: []
+        scripts: [],
+        automations: []
     };
 }
 
@@ -101,6 +102,51 @@ function normalizeScript(raw = {}, existing = {}) {
     return out;
 }
 
+function normalizeAutomation(raw = {}, existing = {}) {
+    const name = cleanText(raw.name ?? existing.name, 100) || 'Untitled Automation';
+    const category = cleanText(raw.category ?? existing.category, 50) || 'General';
+    const description = cleanText(raw.description ?? existing.description, 300);
+    const enabled = raw.enabled !== undefined ? Boolean(raw.enabled) : (existing.enabled !== undefined ? Boolean(existing.enabled) : true);
+    const targetMode = ['all', 'category', 'bots'].includes(raw.targetMode ?? existing.targetMode) ? (raw.targetMode ?? existing.targetMode) : 'all';
+    const targetCategory = cleanText(raw.targetCategory ?? existing.targetCategory, 64) || '';
+    const targetBotIds = Array.isArray(raw.targetBotIds ?? existing.targetBotIds)
+        ? [...new Set((raw.targetBotIds ?? existing.targetBotIds).map(v => cleanText(v, 64)).filter(Boolean))].slice(0, 100)
+        : [];
+
+    const rawTrigger = raw.trigger ?? existing.trigger ?? {};
+    const triggerType = ['on_spawn', 'on_chat', 'on_whisper', 'interval', 'on_health_low', 'on_death', 'on_inventory_full', 'on_shards_gain', 'manual'].includes(rawTrigger.type)
+        ? rawTrigger.type
+        : 'manual';
+    const triggerParams = typeof rawTrigger.params === 'object' && rawTrigger.params !== null ? rawTrigger.params : {};
+
+    const rawBlocks = Array.isArray(raw.blocks ?? existing.blocks) ? (raw.blocks ?? existing.blocks) : [];
+    const blocks = rawBlocks.map((b, idx) => ({
+        id: b.id || `blk_${idx + 1}_${crypto.randomUUID().slice(0, 6)}`,
+        type: cleanText(b.type, 50) || 'action_command',
+        category: cleanText(b.category, 30) || 'action',
+        label: cleanText(b.label, 120) || 'Action Step',
+        params: typeof b.params === 'object' && b.params !== null ? { ...b.params } : {}
+    }));
+
+    return {
+        id: existing.id || cleanId(raw.id, 'auto'),
+        name,
+        category,
+        description,
+        enabled,
+        targetMode,
+        targetCategory,
+        targetBotIds,
+        trigger: {
+            type: triggerType,
+            params: triggerParams
+        },
+        blocks,
+        createdAt: existing.createdAt || raw.createdAt || now(),
+        updatedAt: now()
+    };
+}
+
 class WorkspaceStore {
     constructor(root = ROOT) {
         this.root = root;
@@ -122,6 +168,7 @@ class WorkspaceStore {
         data.preferences = { ...DEFAULT_PREFERENCES, ...(data.preferences || {}) };
         data.aliases = Array.isArray(data.aliases) ? data.aliases : [];
         data.scripts = Array.isArray(data.scripts) ? data.scripts : [];
+        data.automations = Array.isArray(data.automations) ? data.automations : [];
         return data;
     }
 
@@ -135,7 +182,8 @@ class WorkspaceStore {
         return {
             preferences: { ...data.preferences },
             aliases: data.aliases.map(a => ({ ...a })),
-            scripts: data.scripts.map(s => ({ ...s }))
+            scripts: data.scripts.map(s => ({ ...s })),
+            automations: data.automations.map(a => ({ ...a }))
         };
     }
 
@@ -228,6 +276,42 @@ class WorkspaceStore {
         return { ok: true };
     }
 
+    automations(userId) { return this._load(userId).automations.map(a => ({ ...a })); }
+
+    getAutomation(userId, id) {
+        return this._load(userId).automations.find(a => a.id === id) || null;
+    }
+
+    createAutomation(userId, raw) {
+        const data = this._load(userId);
+        if (data.automations.length >= 200) return { ok: false, reason: 'Automation limit reached.' };
+        const auto = normalizeAutomation(raw);
+        if (!auto) return { ok: false, reason: 'A valid automation is required.' };
+        data.automations.push(auto);
+        this._save(userId, data);
+        return { ok: true, automation: { ...auto } };
+    }
+
+    updateAutomation(userId, id, raw) {
+        const data = this._load(userId);
+        const index = data.automations.findIndex(a => a.id === id);
+        if (index < 0) return { ok: false, reason: 'Automation not found.' };
+        const auto = normalizeAutomation(raw, data.automations[index]);
+        if (!auto) return { ok: false, reason: 'A valid automation is required.' };
+        data.automations[index] = auto;
+        this._save(userId, data);
+        return { ok: true, automation: { ...auto } };
+    }
+
+    deleteAutomation(userId, id) {
+        const data = this._load(userId);
+        const before = data.automations.length;
+        data.automations = data.automations.filter(a => a.id !== id);
+        if (before === data.automations.length) return { ok: false, reason: 'Automation not found.' };
+        this._save(userId, data);
+        return { ok: true };
+    }
+
     deleteWorkspace(userId) {
         try {
             const file = this.file(userId);
@@ -237,4 +321,4 @@ class WorkspaceStore {
     }
 }
 
-module.exports = { WorkspaceStore, DEFAULT_PREFERENCES, normalizeScript };
+module.exports = { WorkspaceStore, DEFAULT_PREFERENCES, normalizeScript, normalizeAutomation };
