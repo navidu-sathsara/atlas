@@ -4,12 +4,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Bot,
+  Check,
+  CheckSquare,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   CircleStop,
   Cpu,
   Dices,
   FileCode2,
   Filter,
+  Folder,
+  FolderGit2,
+  FolderInput,
   Grid2X2,
   Grid3X3,
   KeyRound,
@@ -19,6 +26,7 @@ import {
   PackageOpen,
   PanelLeftClose,
   Play,
+  PlayCircle,
   Plus,
   Radio,
   RefreshCw,
@@ -29,6 +37,8 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Square,
+  StopCircle,
   Terminal,
   Trash2,
   UserRound,
@@ -82,6 +92,14 @@ export default function BotsPage() {
   const [broadcastCmd, setBroadcastCmd] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
 
+  // Multi-Selection & Category Grouping State
+  const [selectedBotIds, setSelectedBotIds] = useState([]);
+  const [groupByCategory, setGroupByCategory] = useState(true);
+  const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [batchBusy, setBatchBusy] = useState('');
+  const [moveCategoryOpen, setMoveCategoryOpen] = useState(false);
+  const [targetCategoryInput, setTargetCategoryInput] = useState('');
+
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('bot');
     if (requested) {
@@ -120,6 +138,23 @@ export default function BotsPage() {
       );
     });
   }, [bots, search, statusFilter, categoryFilter]);
+
+  // Group visible bots by category
+  const groupedCategories = useMemo(() => {
+    const map = {};
+    visible.forEach((bot) => {
+      const cat = categoryOf(bot) || 'Uncategorized';
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(bot);
+    });
+    return Object.entries(map).map(([name, items]) => ({
+      name,
+      items,
+      running: items.filter((b) => b.status === 'running').length,
+      offline: items.filter((b) => b.status !== 'running').length,
+      totalShards: items.reduce((acc, b) => acc + (b.shards || 0), 0),
+    }));
+  }, [visible]);
 
   const selected = bots.find((bot) => bot.id === selectedId) || null;
 
@@ -168,6 +203,136 @@ export default function BotsPage() {
       await refreshBots();
     } catch (error) {
       toast(error.message, 'error');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  // ── Multi-Selection & Batch Operation Handlers ──
+  const toggleSelectBot = (id, e) => {
+    e?.stopPropagation();
+    setSelectedBotIds((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    );
+  };
+
+  const selectAllVisible = () => {
+    if (selectedBotIds.length === visible.length) {
+      setSelectedBotIds([]);
+    } else {
+      setSelectedBotIds(visible.map((b) => b.id));
+    }
+  };
+
+  const toggleSelectCategory = (items, e) => {
+    e?.stopPropagation();
+    const ids = items.map((b) => b.id);
+    const allIn = ids.every((id) => selectedBotIds.includes(id));
+    if (allIn) {
+      setSelectedBotIds((curr) => curr.filter((id) => !ids.includes(id)));
+    } else {
+      setSelectedBotIds((curr) => [...new Set([...curr, ...ids])]);
+    }
+  };
+
+  const toggleCollapseCategory = (catName) => {
+    setCollapsedCategories((curr) => ({ ...curr, [catName]: !curr[catName] }));
+  };
+
+  const handleBatchAction = async (action) => {
+    if (!selectedBotIds.length) return;
+    setBatchBusy(action);
+    let count = 0;
+    try {
+      await Promise.all(
+        selectedBotIds.map(async (id) => {
+          try {
+            await api(`/bots/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
+            count++;
+          } catch (_) {}
+        })
+      );
+      toast(`⚡ ${count} bots ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarting'}!`, 'success');
+      window.setTimeout(refreshBots, action === 'restart' ? 3000 : 1000);
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBatchBusy('');
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (!selectedBotIds.length) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedBotIds.length} selected bots? This action cannot be undone.`)) return;
+    setBatchBusy('delete');
+    let count = 0;
+    try {
+      await Promise.all(
+        selectedBotIds.map(async (id) => {
+          try {
+            await api(`/bots/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            count++;
+          } catch (_) {}
+        })
+      );
+      toast(`🗑️ Successfully deleted ${count} bots!`, 'success');
+      if (selectedBotIds.includes(selectedId)) setSelectedId('');
+      setSelectedBotIds([]);
+      await refreshBots();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBatchBusy('');
+    }
+  };
+
+  const handleBatchMoveCategory = async () => {
+    const category = String(targetCategoryInput || '').trim();
+    if (!selectedBotIds.length || !category) return;
+    setBatchBusy('move');
+    let count = 0;
+    try {
+      await Promise.all(
+        selectedBotIds.map(async (id) => {
+          try {
+            await api(`/bots/${encodeURIComponent(id)}/config`, {
+              method: 'PATCH',
+              body: JSON.stringify({ category }),
+            });
+            count++;
+          } catch (_) {}
+        })
+      );
+      toast(`🏷️ Moved ${count} bots to "${category}"!`, 'success');
+      setMoveCategoryOpen(false);
+      setTargetCategoryInput('');
+      await refreshBots();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBatchBusy('');
+    }
+  };
+
+  const handleCategoryAction = async (items, action, e) => {
+    e?.stopPropagation();
+    const ids = items.map((b) => b.id);
+    if (!ids.length) return;
+    setBusy(`${action}-${items[0]?.id}`);
+    let count = 0;
+    try {
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            await api(`/bots/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
+            count++;
+          } catch (_) {}
+        })
+      );
+      toast(`⚡ ${count} bots in category ${action === 'start' ? 'started' : 'stopped'}!`, 'success');
+      window.setTimeout(refreshBots, 1000);
+    } catch (err) {
+      toast(err.message, 'error');
     } finally {
       setBusy('');
     }
@@ -248,12 +413,16 @@ export default function BotsPage() {
   const handleBroadcast = async (e) => {
     e?.preventDefault();
     const cmd = broadcastCmd.trim();
-    if (!cmd || !visible.length) return;
+    const targetBots = selectedBotIds.length > 0
+      ? visible.filter((b) => selectedBotIds.includes(b.id))
+      : visible;
+
+    if (!cmd || !targetBots.length) return;
     setBroadcasting(true);
     let sent = 0;
     try {
       await Promise.all(
-        visible.map(async (bot) => {
+        targetBots.map(async (bot) => {
           try {
             await api(`/bots/${encodeURIComponent(bot.id)}/cmd`, {
               method: 'POST',
@@ -273,7 +442,7 @@ export default function BotsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative pb-20">
       {/* Header with View Switcher */}
       <PageHeader
         eyebrow="Fleet Operations"
@@ -348,7 +517,7 @@ export default function BotsPage() {
             ) : null}
           </div>
 
-          {/* Quick Filter Chips & Density Control */}
+          {/* Quick Filter Chips & Control Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Status Filters */}
             <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
@@ -397,6 +566,35 @@ export default function BotsPage() {
               </select>
             )}
 
+            {/* Group By Category Toggle */}
+            <button
+              onClick={() => setGroupByCategory((v) => !v)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-95',
+                groupByCategory
+                  ? 'border-white/30 bg-white/[0.12] text-white shadow-sm'
+                  : 'border-white/10 bg-white/[0.04] text-white/50 hover:text-white'
+              )}
+              title="Toggle Category Grouping"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Categories
+            </button>
+
+            {/* Select All Visible Toggle */}
+            <button
+              onClick={selectAllVisible}
+              className={cn(
+                'flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-95',
+                selectedBotIds.length > 0
+                  ? 'border-white bg-white text-black shadow-sm'
+                  : 'border-white/10 bg-white/[0.04] text-white/50 hover:text-white'
+              )}
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              {selectedBotIds.length > 0 ? `${selectedBotIds.length} Selected` : 'Select All'}
+            </button>
+
             {/* Grid Density (Matrix mode only) */}
             {viewMode === 'matrix' && (
               <div className="hidden sm:flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
@@ -435,7 +633,7 @@ export default function BotsPage() {
           </div>
         </div>
 
-        {/* Global Broadcast Bar (Visible in Matrix Grid Mode) */}
+        {/* Global / Selected Broadcast Bar (Visible in Matrix Grid Mode) */}
         {viewMode === 'matrix' && visible.length > 0 && (
           <form
             onSubmit={handleBroadcast}
@@ -445,7 +643,11 @@ export default function BotsPage() {
             <input
               value={broadcastCmd}
               onChange={(e) => setBroadcastCmd(e.target.value)}
-              placeholder={`Broadcast command to all ${visible.length} visible bots (e.g. /spawn, /login, !mine)...`}
+              placeholder={
+                selectedBotIds.length > 0
+                  ? `Send command to ${selectedBotIds.length} selected bots (e.g. /spawn, /login, !mine)...`
+                  : `Broadcast command to all ${visible.length} visible bots...`
+              }
               className="min-w-0 flex-1 bg-transparent px-2 py-1 font-mono text-xs text-white placeholder-white/20 outline-none"
             />
             <Button
@@ -455,7 +657,7 @@ export default function BotsPage() {
               loading={broadcasting}
               disabled={!broadcastCmd.trim()}
             >
-              <Send className="h-3 w-3" /> Broadcast
+              <Send className="h-3 w-3" /> {selectedBotIds.length > 0 ? `Send (${selectedBotIds.length})` : 'Broadcast'}
             </Button>
           </form>
         )}
@@ -518,79 +720,278 @@ export default function BotsPage() {
           {/* Bot Sidebar List */}
           <Panel className={cn("sticky top-24 overflow-hidden flex flex-col max-h-[calc(100vh-140px)]", selectedId && "hidden lg:flex")}>
             <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3 bg-white/[0.02]">
-              <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
-                Fleet ({visible.length})
-              </span>
-              <span className="text-[11px] text-white/30 font-mono">
-                {stats.running} live
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Fleet ({visible.length})
+                </span>
+                {selectedBotIds.length > 0 && (
+                  <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                    {selectedBotIds.length} Selected
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-white/40 font-mono">
+                  {stats.running} live
+                </span>
+                <button
+                  type="button"
+                  onClick={selectAllVisible}
+                  className="rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white transition active:scale-95"
+                  title="Select All / None"
+                >
+                  <CheckSquare className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-            <div className="console-scrollbar overflow-y-auto p-2.5 space-y-2">
+
+            <div className="console-scrollbar overflow-y-auto p-2.5 space-y-3">
               {loading ? (
                 <Spinner label="Loading bots" />
               ) : visible.length ? (
-                visible.map((bot) => (
-                  <div
-                    key={bot.id}
-                    onClick={() => selectBot(bot.id)}
-                    className={cn(
-                      'group flex w-full cursor-pointer items-center justify-between gap-3.5 rounded-2xl border p-3.5 transition-all duration-200 active:scale-[0.98]',
-                      selectedId === bot.id
-                        ? 'border-white/30 bg-white/[0.12] shadow-sm'
-                        : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
-                    )}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                      <div className="relative h-12 w-12 shrink-0">
-                        <img
-                          src={`https://mc-heads.net/avatar/${encodeURIComponent(bot.config?.username || 'MHF_Steve')}/64`}
-                          alt={botLabel(bot)}
-                          className="h-12 w-12 rounded-xl border border-white/15 bg-black/60 object-cover shadow-sm transition group-hover:scale-105"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/64';
-                          }}
-                        />
-                        <span
-                          className={cn(
-                            'absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-black',
-                            bot.status === 'running'
-                              ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,1)]'
-                              : bot.status === 'error'
-                              ? 'bg-white/50'
-                              : 'bg-white/20'
-                          )}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <strong className="text-sm font-extrabold text-white">
-                            {bot.config?.username || bot.id}
-                          </strong>
-                          <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white/60">
-                            {bot.id}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-white/60">
-                          {categoryOf(bot)} · {bot.config?.host || 'No server'}
-                        </p>
-                      </div>
-                    </div>
+                groupByCategory ? (
+                  // CATEGORY GROUPED ACCORDION VIEW
+                  groupedCategories.map((group) => {
+                    const isCollapsed = !!collapsedCategories[group.name];
+                    const allInCatSelected = group.items.every((b) => selectedBotIds.includes(b.id));
 
-                    <div className="flex shrink-0 items-center gap-2">
-                      {bot.shards !== null && bot.shards !== undefined && (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
-                          title="In-game Shards"
+                    return (
+                      <div
+                        key={group.name}
+                        className="rounded-2xl border border-white/[0.08] bg-black/40 overflow-hidden transition-all duration-200"
+                      >
+                        {/* Category Group Header */}
+                        <div
+                          onClick={() => toggleCollapseCategory(group.name)}
+                          className="flex items-center justify-between gap-2 p-3 bg-white/[0.03] border-b border-white/[0.06] cursor-pointer hover:bg-white/[0.06] transition"
                         >
-                          💎 {formatShards(bot.shards)}
-                        </span>
-                      )}
-                      <StatusBadge status={bot.status} />
-                      <ChevronRight className="h-4 w-4 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
-                    </div>
-                  </div>
-                ))
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {/* Checkbox for entire category */}
+                            <button
+                              type="button"
+                              onClick={(e) => toggleSelectCategory(group.items, e)}
+                              className={cn(
+                                'flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition active:scale-90',
+                                allInCatSelected
+                                  ? 'border-white bg-white text-black font-bold shadow-sm'
+                                  : 'border-white/20 bg-white/[0.04] text-transparent hover:border-white/50'
+                              )}
+                              title={allInCatSelected ? 'Deselect Category' : 'Select All in Category'}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <Folder className="h-3.5 w-3.5 text-white/60 shrink-0" />
+                                <strong className="truncate text-xs font-black uppercase tracking-wider text-white">
+                                  {group.name}
+                                </strong>
+                              </div>
+                              <div className="flex items-center gap-2 font-mono text-[10px] text-white/50 mt-0.5">
+                                <span>{group.running}/{group.items.length} live</span>
+                                {group.totalShards > 0 && (
+                                  <span>· 💎 {formatShards(group.totalShards)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Quick Category Action Buttons */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleCategoryAction(group.items, 'start', e)}
+                              className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white transition active:scale-95"
+                              title="Start All in Category"
+                            >
+                              <Play className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCategoryAction(group.items, 'stop', e)}
+                              className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white transition active:scale-95"
+                              title="Stop All in Category"
+                            >
+                              <CircleStop className="h-3 w-3" />
+                            </button>
+                            <div className="p-1 text-white/40">
+                              {isCollapsed ? (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Category Bot Items */}
+                        {!isCollapsed && (
+                          <div className="p-2 space-y-1.5">
+                            {group.items.map((bot) => {
+                              const isChecked = selectedBotIds.includes(bot.id);
+                              return (
+                                <div
+                                  key={bot.id}
+                                  onClick={() => selectBot(bot.id)}
+                                  className={cn(
+                                    'group flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border p-2.5 transition-all duration-150 active:scale-[0.99]',
+                                    selectedId === bot.id
+                                      ? 'border-white/35 bg-white/[0.12] shadow-sm'
+                                      : isChecked
+                                      ? 'border-white/25 bg-white/[0.06]'
+                                      : 'border-white/[0.05] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]'
+                                  )}
+                                >
+                                  {/* Selection Checkbox */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => toggleSelectBot(bot.id, e)}
+                                    className={cn(
+                                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition active:scale-90',
+                                      isChecked
+                                        ? 'border-white bg-white text-black font-bold shadow-sm'
+                                        : 'border-white/20 bg-white/[0.04] text-transparent hover:border-white/50'
+                                    )}
+                                    title={isChecked ? 'Deselect Bot' : 'Select Bot'}
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                                    <div className="relative h-9 w-9 shrink-0">
+                                      <img
+                                        src={`https://mc-heads.net/avatar/${encodeURIComponent(bot.config?.username || 'MHF_Steve')}/48`}
+                                        alt={botLabel(bot)}
+                                        className="h-9 w-9 rounded-lg border border-white/15 bg-black/60 object-cover shadow-sm transition group-hover:scale-105"
+                                        onError={(e) => {
+                                          e.target.onerror = null;
+                                          e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/48';
+                                        }}
+                                      />
+                                      <span
+                                        className={cn(
+                                          'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-black',
+                                          bot.status === 'running'
+                                            ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,1)]'
+                                            : bot.status === 'error'
+                                            ? 'bg-white/50'
+                                            : 'bg-white/20'
+                                        )}
+                                      />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <strong className="truncate text-xs font-bold text-white">
+                                          {bot.config?.username || bot.id}
+                                        </strong>
+                                      </div>
+                                      <p className="truncate font-mono text-[10px] text-white/50">
+                                        {bot.id} · {bot.config?.host || 'Direct'}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex shrink-0 items-center gap-1.5">
+                                    {bot.shards !== null && bot.shards !== undefined && (
+                                      <span className="inline-flex items-center gap-0.5 rounded border border-white/15 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                                        💎 {formatShards(bot.shards)}
+                                      </span>
+                                    )}
+                                    <StatusBadge status={bot.status} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  // FLAT LIST VIEW
+                  visible.map((bot) => {
+                    const isChecked = selectedBotIds.includes(bot.id);
+                    return (
+                      <div
+                        key={bot.id}
+                        onClick={() => selectBot(bot.id)}
+                        className={cn(
+                          'group flex w-full cursor-pointer items-center justify-between gap-3.5 rounded-2xl border p-3 transition-all duration-200 active:scale-[0.98]',
+                          selectedId === bot.id
+                            ? 'border-white/30 bg-white/[0.12] shadow-sm'
+                            : isChecked
+                            ? 'border-white/25 bg-white/[0.06]'
+                            : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
+                        )}
+                      >
+                        {/* Checkbox */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleSelectBot(bot.id, e)}
+                          className={cn(
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition active:scale-90',
+                            isChecked
+                              ? 'border-white bg-white text-black font-bold shadow-sm'
+                              : 'border-white/20 bg-white/[0.04] text-transparent hover:border-white/50'
+                          )}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className="relative h-10 w-10 shrink-0">
+                            <img
+                              src={`https://mc-heads.net/avatar/${encodeURIComponent(bot.config?.username || 'MHF_Steve')}/64`}
+                              alt={botLabel(bot)}
+                              className="h-10 w-10 rounded-xl border border-white/15 bg-black/60 object-cover shadow-sm transition group-hover:scale-105"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/64';
+                              }}
+                            />
+                            <span
+                              className={cn(
+                                'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border border-black',
+                                bot.status === 'running'
+                                  ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,1)]'
+                                  : bot.status === 'error'
+                                  ? 'bg-white/50'
+                                  : 'bg-white/20'
+                              )}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <strong className="text-sm font-extrabold text-white">
+                                {bot.config?.username || bot.id}
+                              </strong>
+                              <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white/60">
+                                {bot.id}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-white/60">
+                              {categoryOf(bot)} · {bot.config?.host || 'No server'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          {bot.shards !== null && bot.shards !== undefined && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
+                              title="In-game Shards"
+                            >
+                              💎 {formatShards(bot.shards)}
+                            </span>
+                          )}
+                          <StatusBadge status={bot.status} />
+                          <ChevronRight className="h-4 w-4 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                        </div>
+                      </div>
+                    );
+                  })
+                )
               ) : (
                 <EmptyState
                   icon={Bot}
@@ -981,6 +1382,157 @@ export default function BotsPage() {
         onClose={() => setBatchOpen(false)}
         onGenerated={() => refreshBots()}
       />
+
+      {/* ─── FLOATING BATCH ACTIONS TOOLBAR (DOCKED) ─── */}
+      {selectedBotIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-white/20 bg-black/85 p-2 sm:px-4 sm:py-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl max-w-[95vw] overflow-x-auto">
+            <div className="flex items-center gap-2 pr-2 sm:pr-3 border-r border-white/15 shrink-0">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white text-black font-black text-xs shadow-sm">
+                {selectedBotIds.length}
+              </span>
+              <span className="text-xs font-bold text-white hidden md:inline">Bots Selected</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Batch Start */}
+              <button
+                type="button"
+                onClick={() => handleBatchAction('start')}
+                disabled={!!batchBusy}
+                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] hover:bg-white/[0.18] px-3 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                <Play className="h-3.5 w-3.5" />
+                <span>Start ({selectedBotIds.length})</span>
+              </button>
+
+              {/* Batch Stop */}
+              <button
+                type="button"
+                onClick={() => handleBatchAction('stop')}
+                disabled={!!batchBusy}
+                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] hover:bg-white/[0.18] px-3 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                <CircleStop className="h-3.5 w-3.5" />
+                <span>Stop ({selectedBotIds.length})</span>
+              </button>
+
+              {/* Batch Restart */}
+              <button
+                type="button"
+                onClick={() => handleBatchAction('restart')}
+                disabled={!!batchBusy}
+                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] hover:bg-white/[0.18] px-3 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restart</span>
+              </button>
+
+              {/* Batch Move Category */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetCategoryInput('');
+                  setMoveCategoryOpen(true);
+                }}
+                disabled={!!batchBusy}
+                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] hover:bg-white/[0.18] px-3 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                <FolderInput className="h-3.5 w-3.5" />
+                <span>Category</span>
+              </button>
+
+              {/* Batch Delete */}
+              <button
+                type="button"
+                onClick={handleBatchDelete}
+                disabled={!!batchBusy}
+                className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white text-black hover:bg-white/90 px-3 py-1.5 text-xs font-extrabold transition active:scale-95 disabled:opacity-50 shadow-sm"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </button>
+            </div>
+
+            {/* Clear Selection */}
+            <button
+              type="button"
+              onClick={() => setSelectedBotIds([])}
+              className="p-1.5 text-white/40 hover:text-white rounded-lg transition active:scale-90 shrink-0"
+              title="Clear selection"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Move Category Modal */}
+      <Modal
+        open={moveCategoryOpen}
+        onClose={() => setMoveCategoryOpen(false)}
+        title={`Move ${selectedBotIds.length} Bots to Category`}
+        description="Select an existing category or enter a new category name."
+        actions={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setMoveCategoryOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleBatchMoveCategory}
+              disabled={!targetCategoryInput.trim() || !!batchBusy}
+              loading={batchBusy === 'move'}
+            >
+              Apply Category
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Existing Category Chips */}
+          {categories.filter((c) => c !== 'all').length > 0 && (
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-white/50">
+                Existing Categories
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {categories
+                  .filter((c) => c !== 'all')
+                  .map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setTargetCategoryInput(cat)}
+                      className={cn(
+                        'rounded-xl border px-3 py-1.5 text-xs font-semibold transition active:scale-95',
+                        targetCategoryInput === cat
+                          ? 'border-white bg-white text-black font-bold shadow-sm'
+                          : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/25 hover:text-white'
+                      )}
+                    >
+                      📁 {cat}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Target Category Input */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">
+              Target Category Name
+            </label>
+            <input
+              type="text"
+              value={targetCategoryInput}
+              onChange={(e) => setTargetCategoryInput(e.target.value)}
+              placeholder="e.g. Farming, Lobby, Defense, Mining Fleet..."
+              className="field-control"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
