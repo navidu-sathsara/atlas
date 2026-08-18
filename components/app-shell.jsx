@@ -181,6 +181,14 @@ function ShellFrame({ children }) {
     </>
   );
 
+  const mobileDockTabs = [
+    { href: '/overview', label: 'Overview', icon: Gauge },
+    { href: '/bots', label: 'Bots', icon: Bot, badge: bots.length },
+    { href: '/network', label: 'Network', icon: Network, badge: proxies.length },
+    { href: '/scripts', label: 'Scripts', icon: Braces },
+    { key: 'more', label: 'More', icon: Menu, action: () => setMobileOpen(true) },
+  ];
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
       <CommandPalette items={paletteItems} />
@@ -190,28 +198,69 @@ function ShellFrame({ children }) {
       {/* Desktop Persistent Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-white/[0.08] bg-[#080808]/95 shadow-[4px_0_24px_rgba(0,0,0,0.8)] backdrop-blur-3xl transition-all duration-300 lg:flex',
+          'fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-white/[0.08] bg-[#09090b]/95 shadow-[4px_0_24px_rgba(0,0,0,0.8)] backdrop-blur-3xl transition-all duration-300 lg:flex',
           collapsed ? 'w-20' : 'w-64'
         )}
       >
         {sidebar}
       </aside>
 
-      {/* Mobile Drawer */}
+      {/* iOS Mobile Bottom Sheet Drawer */}
       {mobileOpen && (
-        <div className="anim-fade fixed inset-0 z-50 bg-black/80 backdrop-blur-md lg:hidden" onClick={() => setMobileOpen(false)}>
+        <div className="anim-fade fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-md lg:hidden" onClick={() => setMobileOpen(false)}>
           <aside
-            className="anim-rise relative flex h-full w-[280px] flex-col border-r border-white/10 bg-[#080808] shadow-2xl backdrop-blur-3xl"
+            className="anim-rise max-h-[85vh] w-full overflow-y-auto rounded-t-[30px] border-t border-white/15 bg-[#0d0d0f]/98 p-5 shadow-2xl backdrop-blur-3xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <button
-              className="absolute -right-12 top-4 rounded-xl border border-white/10 bg-white/[0.06] p-2 text-white/70 backdrop-blur-xl transition hover:text-white"
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close navigation"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            {sidebar}
+            {/* Grab handle */}
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/25" />
+            
+            <div className="mb-4 flex items-center justify-between border-b border-white/[0.08] pb-4">
+              <div>
+                <strong className="block text-base font-bold tracking-tight text-white">BotHive Navigation</strong>
+                <small className="text-xs text-white/40">{user.email} · {user.role}</small>
+              </div>
+              <button
+                className="rounded-xl border border-white/10 bg-white/[0.06] p-2 text-white/60 backdrop-blur-xl transition hover:text-white"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pb-4 sm:grid-cols-3">
+              {visibleItems.map((item) => {
+                const Icon = item.icon;
+                const current = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-2 rounded-2xl border p-4 text-center transition-all duration-200 active:scale-95',
+                      current
+                        ? 'border-white/30 bg-white/[0.12] text-white shadow-sm'
+                        : 'border-white/[0.07] bg-white/[0.03] text-white/60 hover:bg-white/[0.06] hover:text-white'
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-xs font-semibold">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="mt-2 border-t border-white/[0.08] pt-4">
+              <button
+                onClick={handleLogout}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-white/60 transition active:scale-95 hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out of account
+              </button>
+            </div>
           </aside>
         </div>
       )}
@@ -223,14 +272,26 @@ function ShellFrame({ children }) {
           collapsed ? 'lg:pl-20' : 'lg:pl-64'
         )}
       >
-        <header className="sticky top-0 z-30 flex h-[68px] items-center gap-3 border-b border-white/[0.08] bg-black/80 px-4 backdrop-blur-2xl sm:px-8">
+        <header className="sticky top-0 z-30 flex h-[64px] items-center gap-3 border-b border-white/[0.08] bg-black/85 px-4 backdrop-blur-2xl sm:h-[68px] sm:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white lg:hidden">BH</span>
+            <h2 className="truncate text-[14px] font-semibold tracking-tight text-white sm:text-[15px]">{active.label}</h2>
+          </div>
+
           <button
-            className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-white/50 transition hover:text-white lg:hidden"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open navigation"
+            onClick={openPalette}
+            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.04] px-3 py-1.5 text-[12px] text-white/50 backdrop-blur-xl transition-all duration-200 hover:border-white/20 hover:text-white sm:px-3.5 sm:py-2"
           >
-            <Menu className="h-4 w-4" />
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Search</span>
+            <kbd className="hidden rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-white/50 sm:inline">Cmd K</kbd>
           </button>
+
+          <div className="flex items-center gap-1.5 rounded-full border border-white/[0.09] bg-white/[0.04] px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-xl sm:gap-2 sm:px-3.5 sm:py-1.5">
+            <span className={cn('h-1.5 w-1.5 rounded-full', connection === 'live' ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,1)]' : 'anim-pulse bg-white/40')} />
+            <span className="hidden sm:inline">{connection}</span>
+          </div>
+
           <button
             className="hidden rounded-xl p-2 text-white/35 transition-all duration-200 hover:bg-white/[0.08] hover:text-white lg:inline-flex"
             onClick={() => setCollapsed((value) => !value)}
@@ -238,28 +299,53 @@ function ShellFrame({ children }) {
           >
             {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
-
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[14px] font-semibold tracking-tight text-white">{active.label}</h2>
-          </div>
-
-          <button
-            onClick={openPalette}
-            className="hidden items-center gap-2.5 rounded-xl border border-white/[0.09] bg-white/[0.04] px-3.5 py-2 text-[12px] text-white/40 backdrop-blur-xl transition-all duration-200 hover:border-white/20 hover:text-white sm:flex"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span>Search</span>
-            <kbd className="rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-white/50">Cmd K</kbd>
-          </button>
-
-          <div className="flex items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.04] px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-xl">
-            <span className={cn('h-1.5 w-1.5 rounded-full', connection === 'live' ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,1)]' : 'anim-pulse bg-white/40')} />
-            {connection}
-          </div>
         </header>
 
-        <main className="flex-1 p-5 sm:p-7 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-32 lg:p-8 lg:pb-12">{children}</main>
       </div>
+
+      {/* iOS Mobile Floating Glass Bottom Tab Bar / Dock */}
+      <nav className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-around rounded-full border border-white/15 bg-[#101012]/90 px-3 py-2 shadow-[0_12px_36px_rgba(0,0,0,0.9)] backdrop-blur-3xl lg:hidden">
+        {mobileDockTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isCurrent = tab.href ? pathname.startsWith(tab.href) : false;
+          if (tab.action) {
+            return (
+              <button
+                key={tab.key || tab.label}
+                onClick={tab.action}
+                className="flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-white/45 transition active:scale-90 hover:text-white"
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{tab.label}</span>
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                'relative flex flex-col items-center gap-0.5 rounded-full px-3 py-1 transition-all duration-200 active:scale-90',
+                isCurrent ? 'text-white font-semibold' : 'text-white/45 hover:text-white/80'
+              )}
+            >
+              <span className="relative">
+                <Icon className="h-5 w-5" />
+                {typeof tab.badge === 'number' && tab.badge > 0 && (
+                  <span className="absolute -right-2 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-white px-1 text-[8px] font-bold text-black">
+                    {tab.badge}
+                  </span>
+                )}
+              </span>
+              <span className="text-[10px] tracking-tight">{tab.label}</span>
+              {isCurrent && (
+                <span className="absolute -bottom-1 h-1 w-1 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,1)]" />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

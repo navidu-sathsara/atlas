@@ -384,13 +384,13 @@ body::after {
 
 @media (min-width: 960px) {
   .bot-inspector-grid {
-    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-columns: 290px minmax(0, 1fr);
   }
 }
 
 @media (min-width: 1200px) {
   .bot-inspector-grid {
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: 330px minmax(0, 1fr);
   }
 }
 
@@ -406,6 +406,69 @@ body::after {
     align-items: center;
     justify-content: space-between;
   }
+}
+
+/* ============================================================
+   Apple iOS Liquid Glass Design System Styles
+   ============================================================ */
+.ios-glass-card {
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ios-glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.ios-glass-dock {
+  background: rgba(14, 14, 16, 0.88);
+  backdrop-filter: blur(32px) saturate(210%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 20px 50px rgba(0, 0, 0, 0.85);
+}
+
+.ios-segmented-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ios-segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  user-select: none;
+}
+
+.ios-segmented-item.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.ios-segmented-item:not(.active):hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 @media (prefers-reduced-motion: reduce) {

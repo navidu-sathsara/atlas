@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ArrowLeft,
   Bot,
   CircleStop,
   Cpu,
@@ -435,7 +436,7 @@ export default function BotsPage() {
       {viewMode === 'inspector' && (
         <div className="bot-inspector-grid min-h-[640px]">
           {/* Bot Sidebar List */}
-          <Panel className="sticky top-24 overflow-hidden flex flex-col max-h-[calc(100vh-140px)]">
+          <Panel className={cn("sticky top-24 overflow-hidden flex flex-col max-h-[calc(100vh-140px)]", selectedId && "hidden lg:flex")}>
             <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3 bg-white/[0.02]">
               <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
                 Fleet ({visible.length})
@@ -453,7 +454,7 @@ export default function BotsPage() {
                     key={bot.id}
                     onClick={() => selectBot(bot.id)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200',
+                      'flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 active:scale-[0.98]',
                       selectedId === bot.id
                         ? 'border-white/30 bg-white/[0.12] shadow-sm'
                         : 'border-transparent hover:border-white/10 hover:bg-white/[0.04]'
@@ -492,8 +493,19 @@ export default function BotsPage() {
 
           {/* Selected Bot Details */}
           {selected ? (
-            <div className="min-w-0 space-y-5">
-              <Panel className="p-5">
+            <div className={cn("min-w-0 space-y-5", !selectedId && "hidden lg:block")}>
+              {/* Mobile Back to Fleet Bar */}
+              <div className="flex items-center justify-between lg:hidden">
+                <button
+                  onClick={() => setSelectedId(null)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-xl transition active:scale-95 hover:bg-white/10"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to Fleet List
+                </button>
+                <StatusBadge status={selected.status} />
+              </div>
+
+              <Panel className="p-5 sm:p-6">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex min-w-0 items-start gap-4">
                     <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-base font-black uppercase text-white">

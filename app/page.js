@@ -3,18 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers';
-import { LandingNav } from '@/components/landing/landing-nav';
-import { LandingFooter } from '@/components/landing/landing-footer';
-import { Hero } from '@/components/landing/hero';
-import {
-  FeatureBento,
-  Workflow,
-  StatsBand,
-  ModulesMarquee,
-  Testimonials,
-  Pricing,
-  Faq,
-} from '@/components/landing/sections';
 
 const startRoutes = {
   overview: '/overview',
@@ -25,34 +13,31 @@ const startRoutes = {
   account: '/settings',
 };
 
-export default function LandingPage() {
+export default function RootPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace(startRoutes[user.preferences?.startPage] || '/overview');
+    if (!loading) {
+      if (user) {
+        router.replace(startRoutes[user.preferences?.startPage] || '/overview');
+      } else {
+        router.replace('/login');
+      }
     }
   }, [loading, user, router]);
 
-  if (!loading && user) {
-    return null;
-  }
-
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      <LandingNav />
-      <main>
-        <Hero />
-        <FeatureBento />
-        <Workflow />
-        <StatsBand />
-        <ModulesMarquee />
-        <Testimonials />
-        <Pricing />
-        <Faq />
-      </main>
-      <LandingFooter />
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black">
+      <div className="relative flex flex-col items-center">
+        <div className="relative flex h-12 w-12 items-center justify-center">
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-white/10 border-t-white" style={{ animationDuration: '0.85s' }} />
+          <div className="h-2 w-2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,1)]" />
+        </div>
+        <p className="mt-5 font-mono text-xs tracking-wider uppercase text-white/40 animate-pulse">
+          Opening BotHive...
+        </p>
+      </div>
     </div>
   );
 }
