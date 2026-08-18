@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Bot,
+  ChevronRight,
   CircleStop,
   Cpu,
   FileCode2,
@@ -69,13 +70,12 @@ export default function BotsPage() {
 
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('bot');
-    if (requested) setSelectedId(requested);
-  }, []);
-
-  useEffect(() => {
-    if (bots.length && !bots.some((bot) => bot.id === selectedId)) setSelectedId(bots[0].id);
-    if (!bots.length) setSelectedId('');
-  }, [bots, selectedId]);
+    if (requested) {
+      setSelectedId(requested);
+    } else if (typeof window !== 'undefined' && window.innerWidth >= 1024 && bots.length) {
+      setSelectedId(bots[0].id);
+    }
+  }, [bots]);
 
   const categories = useMemo(() => {
     const list = [...new Set(bots.map((b) => categoryOf(b)).filter(Boolean))];
@@ -113,6 +113,13 @@ export default function BotsPage() {
     setSelectedId(id);
     const url = new URL(window.location.href);
     url.searchParams.set('bot', id);
+    window.history.replaceState({}, '', url);
+  };
+
+  const handleBackToFleet = () => {
+    setSelectedId('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('bot');
     window.history.replaceState({}, '', url);
   };
 
@@ -445,41 +452,51 @@ export default function BotsPage() {
                 {stats.running} live
               </span>
             </div>
-            <div className="console-scrollbar overflow-y-auto p-2 space-y-1.5">
+            <div className="console-scrollbar overflow-y-auto p-2.5 space-y-2">
               {loading ? (
                 <Spinner label="Loading bots" />
               ) : visible.length ? (
                 visible.map((bot) => (
-                  <button
+                  <div
                     key={bot.id}
                     onClick={() => selectBot(bot.id)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 active:scale-[0.98]',
+                      'group flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3.5 transition-all duration-200 active:scale-[0.98]',
                       selectedId === bot.id
                         ? 'border-white/30 bg-white/[0.12] shadow-sm'
-                        : 'border-transparent hover:border-white/10 hover:bg-white/[0.04]'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]'
                     )}
                   >
-                    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-xs font-black uppercase text-white">
-                      {botLabel(bot).slice(0, 2)}
-                      <span
-                        className={cn(
-                          'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-black',
-                          bot.status === 'running'
-                            ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,1)]'
-                            : bot.status === 'error'
-                            ? 'bg-white/40'
-                            : 'bg-white/20'
-                        )}
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <strong className="block truncate text-xs font-semibold text-white">{botLabel(bot)}</strong>
-                      <small className="mt-0.5 block truncate text-[11px] text-white/40">
-                        {categoryOf(bot)} · {bot.config?.host || bot.id}
-                      </small>
-                    </span>
-                  </button>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-xs font-black uppercase text-white shadow-inner">
+                        {botLabel(bot).slice(0, 2)}
+                        <span
+                          className={cn(
+                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-black',
+                            bot.status === 'running'
+                              ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,1)]'
+                              : bot.status === 'error'
+                              ? 'bg-white/40'
+                              : 'bg-white/20'
+                          )}
+                        />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <strong className="truncate text-xs font-bold text-white">{botLabel(bot)}</strong>
+                          <span className="text-[10px] text-white/30">· {categoryOf(bot)}</span>
+                        </div>
+                        <p className="mt-0.5 truncate font-mono text-[11px] text-white/40">
+                          {bot.config?.host || bot.id}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={bot.status} />
+                      <ChevronRight className="h-4 w-4 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                    </div>
+                  </div>
                 ))
               ) : (
                 <EmptyState
@@ -495,10 +512,11 @@ export default function BotsPage() {
           {selected ? (
             <div className={cn("min-w-0 space-y-5", !selectedId && "hidden lg:block")}>
               {/* Mobile Back to Fleet Bar */}
-              <div className="flex items-center justify-between lg:hidden">
+              <div className="flex items-center justify-between lg:hidden mb-1">
                 <button
-                  onClick={() => setSelectedId(null)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-xl transition active:scale-95 hover:bg-white/10"
+                  type="button"
+                  onClick={handleBackToFleet}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 text-xs font-bold text-white backdrop-blur-2xl transition active:scale-95 hover:bg-white/15 shadow-sm"
                 >
                   <ArrowLeft className="h-4 w-4" /> Back to Fleet List
                 </button>
