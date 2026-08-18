@@ -162,18 +162,41 @@ export default function OverviewPage() {
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-xs font-black uppercase text-white">
-                          {botLabel(bot).slice(0, 2)}
-                        </span>
+                      <div className="flex min-w-0 items-center gap-3.5">
+                        <div className="relative h-11 w-11 shrink-0">
+                          <img
+                            src={`https://mc-heads.net/avatar/${encodeURIComponent(bot.config?.username || 'MHF_Steve')}/48`}
+                            alt={botLabel(bot)}
+                            className="h-11 w-11 rounded-xl border border-white/15 bg-black/60 object-cover shadow-sm transition group-hover:scale-105"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/48';
+                            }}
+                          />
+                          <span
+                            className={cn(
+                              'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-black',
+                              bot.status === 'running'
+                                ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,1)]'
+                                : bot.status === 'error'
+                                ? 'bg-white/50'
+                                : 'bg-white/20'
+                            )}
+                          />
+                        </div>
                         <div className="min-w-0">
-                          <Link
-                            href={`/bots?bot=${encodeURIComponent(bot.id)}`}
-                            className="block truncate text-sm font-semibold text-white transition hover:underline"
-                          >
-                            {botLabel(bot)}
-                          </Link>
-                          <p className="mt-0.5 truncate text-[11px] text-white/35">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/bots?bot=${encodeURIComponent(bot.id)}`}
+                              className="block truncate text-sm font-extrabold text-white transition hover:underline"
+                            >
+                              {bot.config?.username || bot.id}
+                            </Link>
+                            <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white/60">
+                              {bot.id}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-white/60">
                             {bot.config?.host || 'No server'} · {categoryOf(bot)}
                           </p>
                         </div>

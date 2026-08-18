@@ -110,34 +110,45 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-black/70 backdrop-blur-2xl transition-all duration-300 hover:border-white/20 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.8)]">
       {/* Tile Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-[10px] font-bold uppercase text-white">
-            {botLabel(bot).slice(0, 2)}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-white/[0.03] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="relative h-9 w-9 shrink-0">
+            <img
+              src={`https://mc-heads.net/avatar/${encodeURIComponent(bot.config?.username || 'MHF_Steve')}/48`}
+              alt={botLabel(bot)}
+              className="h-9 w-9 rounded-lg border border-white/15 bg-black/60 object-cover shadow-sm"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/48';
+              }}
+            />
             <span
               className={cn(
-                'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-black',
+                'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-black',
                 bot.status === 'running'
-                  ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]'
+                  ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,1)]'
                   : bot.status === 'error'
                   ? 'bg-white/40'
                   : 'bg-white/20'
               )}
             />
-          </span>
+          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <strong className="truncate text-xs font-semibold text-white">{botLabel(bot)}</strong>
+              <strong className="truncate text-sm font-extrabold text-white">{bot.config?.username || bot.id}</strong>
+              <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white/60">
+                {bot.id}
+              </span>
               <StatusBadge status={bot.status} />
             </div>
-            <p className="truncate text-[10px] text-white/35">
-              {categoryOf(bot)} · {bot.config?.host || bot.id}
+            <p className="mt-0.5 truncate text-xs text-white/50">
+              {bot.config?.host || 'No host'} · {categoryOf(bot)}
             </p>
           </div>
         </div>
 
         {/* Tile Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {bot.status === 'running' ? (
             <>
               <button

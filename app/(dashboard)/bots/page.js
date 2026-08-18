@@ -468,40 +468,52 @@ export default function BotsPage() {
                     key={bot.id}
                     onClick={() => selectBot(bot.id)}
                     className={cn(
-                      'group flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3.5 transition-all duration-200 active:scale-[0.98]',
+                      'group flex w-full cursor-pointer items-center justify-between gap-3.5 rounded-2xl border p-3.5 transition-all duration-200 active:scale-[0.98]',
                       selectedId === bot.id
                         ? 'border-white/30 bg-white/[0.12] shadow-sm'
-                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]'
+                        : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
                     )}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-xs font-black uppercase text-white shadow-inner">
-                        {botLabel(bot).slice(0, 2)}
+                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                      <div className="relative h-12 w-12 shrink-0">
+                        <img
+                          src={`https://mc-heads.net/avatar/${encodeURIComponent(bot.config?.username || 'MHF_Steve')}/64`}
+                          alt={botLabel(bot)}
+                          className="h-12 w-12 rounded-xl border border-white/15 bg-black/60 object-cover shadow-sm transition group-hover:scale-105"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/64';
+                          }}
+                        />
                         <span
                           className={cn(
-                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-black',
+                            'absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-black',
                             bot.status === 'running'
-                              ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,1)]'
+                              ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,1)]'
                               : bot.status === 'error'
-                              ? 'bg-white/40'
+                              ? 'bg-white/50'
                               : 'bg-white/20'
                           )}
                         />
-                      </span>
+                      </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <strong className="truncate text-xs font-bold text-white">{botLabel(bot)}</strong>
-                          <span className="text-[10px] text-white/30">· {categoryOf(bot)}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <strong className="text-sm font-extrabold text-white">
+                            {bot.config?.username || bot.id}
+                          </strong>
+                          <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white/60">
+                            {bot.id}
+                          </span>
                         </div>
-                        <p className="mt-0.5 truncate font-mono text-[11px] text-white/40">
-                          {bot.config?.host || bot.id}
+                        <p className="mt-0.5 truncate text-xs text-white/60">
+                          {categoryOf(bot)} · {bot.config?.host || 'No server'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <StatusBadge status={bot.status} />
-                      <ChevronRight className="h-4 w-4 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                      <ChevronRight className="h-4 w-4 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
                     </div>
                   </div>
                 ))
@@ -533,28 +545,48 @@ export default function BotsPage() {
               <Panel className="p-5 sm:p-6">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex min-w-0 items-start gap-4">
-                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-base font-black uppercase text-white">
-                      {botLabel(selected).slice(0, 2)}
-                    </span>
+                    <div className="relative h-16 w-16 shrink-0">
+                      <img
+                        src={`https://mc-heads.net/avatar/${encodeURIComponent(selected.config?.username || 'MHF_Steve')}/64`}
+                        alt={botLabel(selected)}
+                        className="h-16 w-16 rounded-2xl border border-white/20 bg-black/70 object-cover shadow-md"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/64';
+                        }}
+                      />
+                      <span
+                        className={cn(
+                          'absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-black',
+                          selected.status === 'running'
+                            ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,1)]'
+                            : selected.status === 'error'
+                            ? 'bg-white/50'
+                            : 'bg-white/20'
+                        )}
+                      />
+                    </div>
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-xl font-bold text-white">{botLabel(selected)}</h2>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h2 className="truncate text-2xl font-black text-white">{selected.config?.username || selected.id}</h2>
+                        <span className="rounded-lg bg-white/[0.10] px-2 py-0.5 font-mono text-xs font-bold text-white/70">
+                          {selected.id}
+                        </span>
                         <StatusBadge status={selected.status} />
                       </div>
-                      <p className="mt-1 font-mono text-xs text-white/40">{selected.id}</p>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/50">
-                        <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1">
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-white/70">
+                        <span className="rounded-lg border border-white/12 bg-white/[0.05] px-2.5 py-1">
                           {selected.config?.host}:{selected.config?.port || 25565}
                         </span>
-                        <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1">
-                          {selected.config?.version || 'auto'}
+                        <span className="rounded-lg border border-white/12 bg-white/[0.05] px-2.5 py-1">
+                          Version: {selected.config?.version || '1.20.1'} ({selected.config?.auth || 'offline'})
                         </span>
-                        <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1">
-                          {categoryOf(selected)}
+                        <span className="rounded-lg border border-white/12 bg-white/[0.05] px-2.5 py-1">
+                          Category: {categoryOf(selected)}
                         </span>
                         {selected.ownerLabel && (
-                          <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1">
-                            {selected.ownerLabel}
+                          <span className="rounded-lg border border-white/12 bg-white/[0.05] px-2.5 py-1">
+                            Owner: {selected.ownerLabel}
                           </span>
                         )}
                       </div>
