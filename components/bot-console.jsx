@@ -30,10 +30,21 @@ export function BotConsole({ bot, onStatus }) {
   const [streamState, setStreamState] = useState('connecting');
   const scrollRef = useRef(null);
   const { toast } = useToast();
+  const onStatusRef = useRef(onStatus);
+  const prevBotIdRef = useRef(null);
+
+  useEffect(() => {
+    onStatusRef.current = onStatus;
+  }, [onStatus]);
 
   useEffect(() => {
     if (!bot?.id) return;
-    setLogs([]);
+
+    if (prevBotIdRef.current !== bot.id) {
+      setLogs([]);
+      prevBotIdRef.current = bot.id;
+    }
+
     const stream = new EventSource(`/api/bots/${encodeURIComponent(bot.id)}/events`);
     stream.onopen = () => setStreamState('live');
     stream.onerror = () => setStreamState('reconnecting');
@@ -41,16 +52,23 @@ export function BotConsole({ bot, onStatus }) {
       let payload;
       try { payload = JSON.parse(event.data); } catch { return; }
       if (payload.type === 'snapshot') {
-        setLogs((payload.logs || []).slice(-MAX_LOGS).map(normalizeLog));
-        if (payload.status) onStatus?.(payload.status);
+        const snapLogs = (payload.logs || []).slice(-MAX_LOGS).map(normalizeLog);
+        setLogs((current) => {
+          // If we already have logs and snapshot arrives on reconnect, merge or keep latest
+          if (current.length > 0 && snapLogs.length <= current.length) {
+            return current;
+          }
+          return snapLogs;
+        });
+        if (payload.status) onStatusRef.current?.(payload.status);
       }
       if (payload.type === 'log') {
         setLogs((current) => [...current, normalizeLog(payload)].slice(-MAX_LOGS));
       }
-      if (payload.type === 'status') onStatus?.(payload.status);
+      if (payload.type === 'status') onStatusRef.current?.(payload.status);
     };
     return () => stream.close();
-  }, [bot?.id, onStatus]);
+  }, [bot?.id]);
 
   useEffect(() => {
     const element = scrollRef.current;

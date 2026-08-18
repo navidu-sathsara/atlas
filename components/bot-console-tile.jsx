@@ -40,6 +40,12 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
   const [shards, setShards] = useState(bot.shards);
   const scrollRef = useRef(null);
   const { toast } = useToast();
+  const onStatusChangeRef = useRef(onStatusChange);
+  const prevBotIdRef = useRef(null);
+
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  }, [onStatusChange]);
 
   useEffect(() => {
     setShards(bot.shards);
@@ -47,7 +53,12 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
 
   useEffect(() => {
     if (!bot?.id) return;
-    setLogs([]);
+    
+    if (prevBotIdRef.current !== bot.id) {
+      setLogs([]);
+      prevBotIdRef.current = bot.id;
+    }
+
     const stream = new EventSource(`/api/bots/${encodeURIComponent(bot.id)}/events`);
     
     stream.onopen = () => setStreamState('live');
@@ -61,14 +72,20 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
         return;
       }
       if (payload.type === 'snapshot') {
-        setLogs((payload.logs || []).slice(-MAX_LOGS).map(normalizeLog));
-        if (payload.status) onStatusChange?.(bot.id, payload.status);
+        const snapLogs = (payload.logs || []).slice(-MAX_LOGS).map(normalizeLog);
+        setLogs((current) => {
+          if (current.length > 0 && snapLogs.length <= current.length) {
+            return current;
+          }
+          return snapLogs;
+        });
+        if (payload.status) onStatusChangeRef.current?.(bot.id, payload.status);
       }
       if (payload.type === 'log') {
         setLogs((current) => [...current, normalizeLog(payload)].slice(-MAX_LOGS));
       }
       if (payload.type === 'status') {
-        onStatusChange?.(bot.id, payload.status);
+        onStatusChangeRef.current?.(bot.id, payload.status);
       }
       if (payload.type === 'shards') {
         setShards(payload.shards);
@@ -76,7 +93,7 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
     };
 
     return () => stream.close();
-  }, [bot?.id, onStatusChange]);
+  }, [bot?.id]);
 
   useEffect(() => {
     const element = scrollRef.current;

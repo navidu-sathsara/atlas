@@ -12,7 +12,10 @@ import {
   Filter,
   Grid2X2,
   Grid3X3,
+  KeyRound,
+  Layers,
   LayoutGrid,
+  Network,
   PackageOpen,
   PanelLeftClose,
   Play,
@@ -24,6 +27,7 @@ import {
   Send,
   Server,
   Settings2,
+  ShieldCheck,
   Sparkles,
   Terminal,
   Trash2,
@@ -37,7 +41,7 @@ import { BotConsole } from '@/components/bot-console';
 import { BotConsoleTile } from '@/components/bot-console-tile';
 import { UsernameStudioModal } from '@/components/username-studio-modal';
 import { BatchBotGeneratorModal } from '@/components/batch-bot-generator-modal';
-import { Button, Checkbox, EmptyState, Modal, PageHeader, Panel, Spinner, StatusBadge, Tabs } from '@/components/ui';
+import { Button, Checkbox, EmptyState, Modal, PageHeader, Panel, Spinner, StatusBadge, Switch, Tabs } from '@/components/ui';
 import { api, cn } from '@/lib/api';
 import { botLabel, categoryOf, formatShards, proxyLabel } from '@/lib/format';
 
@@ -49,9 +53,12 @@ const defaultDeploy = {
   version: '1.20.1',
   auth: 'offline',
   category: 'Uncategorized',
+  proxyMode: 'rotate', // 'rotate' | 'specific' | 'direct'
   proxyId: '',
   autoReconnect: true,
   afkMode: true,
+  autoAuth: true,
+  loginPassword: 'AtlasPass123!',
 };
 
 export default function BotsPage() {
@@ -166,18 +173,71 @@ export default function BotsPage() {
     }
   };
 
+  const parsedNames = useMemo(() => {
+    return (deploy.username || '')
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [deploy.username]);
+
   const createBot = async () => {
     setSubmitting(true);
     try {
-      const result = await api('/bots', {
-        method: 'POST',
-        body: JSON.stringify({ ...deploy, port: Number(deploy.port) || 25565 }),
-      });
-      toast(`${botLabel(result.bot)} deployed`, 'success');
+      const rawNames = parsedNames.length ? parsedNames : [deploy.id || 'bot_1'];
+
+      if (rawNames.length > 1) {
+        // Multi-bot deployment with round-robin proxy rotation & auto-auth
+        const result = await api('/bots/generate', {
+          method: 'POST',
+          body: JSON.stringify({
+            quantity: rawNames.length,
+            customUsernames: rawNames,
+            host: deploy.host,
+            port: Number(deploy.port) || 25565,
+            version: deploy.version,
+            auth: deploy.auth,
+            category: deploy.category,
+            useProxies: deploy.proxyMode === 'rotate' && proxies.length > 0,
+            autoRegister: deploy.autoAuth,
+            autoLogin: deploy.autoAuth,
+            loginPassword: deploy.autoAuth ? deploy.loginPassword : null,
+          }),
+        });
+        toast(`⚡ Successfully deployed ${result.count || rawNames.length} bots with Round-Robin proxy mesh!`, 'success');
+      } else {
+        // Single bot deployment
+        let proxyIdToUse = undefined;
+        if (deploy.proxyMode === 'specific' && deploy.proxyId) {
+          proxyIdToUse = deploy.proxyId;
+        } else if (deploy.proxyMode === 'rotate' && proxies.length > 0) {
+          proxyIdToUse = proxies[0].id;
+        }
+
+        const result = await api('/bots', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: deploy.id || undefined,
+            username: rawNames[0],
+            host: deploy.host,
+            port: Number(deploy.port) || 25565,
+            version: deploy.version,
+            auth: deploy.auth,
+            category: deploy.category,
+            proxyId: proxyIdToUse,
+            autoReconnect: deploy.autoReconnect,
+            afkMode: deploy.afkMode,
+            autoRegister: deploy.autoAuth,
+            autoLogin: deploy.autoAuth,
+            loginPassword: deploy.autoAuth ? deploy.loginPassword : null,
+          }),
+        });
+        toast(`${botLabel(result.bot)} deployed`, 'success');
+        if (result.bot?.id) selectBot(result.bot.id);
+      }
+
       setDeployOpen(false);
       setDeploy(defaultDeploy);
       await refreshBots();
-      if (result.bot?.id) selectBot(result.bot.id);
     } catch (error) {
       toast(error.message, 'error');
     } finally {
@@ -683,28 +743,33 @@ export default function BotsPage() {
       <Modal
         open={deployOpen}
         onClose={() => setDeployOpen(false)}
-        title="Deploy bot"
-        description="The bot and its runtime folder will belong to your account."
+        title={parsedNames.length > 1 ? `Deploy ${parsedNames.length} Bots` : 'Deploy Bot'}
+        description="Deploy single or multiple bots instantly with automated proxy rotation and cracked auto-auth handshakes."
         wide
         footer={
           <>
             <Button onClick={() => setDeployOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={createBot} loading={submitting}>
-              Deploy bot
+            <Button variant="primary" onClick={createBot} loading={submitting} className="gap-2 px-6">
+              <Zap className="h-4 w-4" />
+              {parsedNames.length > 1 ? `Deploy ${parsedNames.length} Bots` : 'Deploy Bot'}
             </Button>
           </>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Bot ID"
-            value={deploy.id}
-            onChange={(value) => setDeploy({ ...deploy, id: value })}
-            placeholder="Optional, generated automatically"
-          />
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="field-label mb-0">Minecraft username</span>
+        <div className="space-y-4">
+          {/* Username & Studio Row */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+                  Minecraft Username(s)
+                </span>
+                {parsedNames.length > 1 && (
+                  <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                    ⚡ {parsedNames.length} Bots Batch Mode
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setNameStudioOpen(true)}
@@ -713,62 +778,177 @@ export default function BotsPage() {
                 <Sparkles className="h-3 w-3" /> Name Studio
               </button>
             </div>
-            <input
-              className="field-control"
+            
+            <textarea
+              rows={parsedNames.length > 1 ? 3 : 2}
+              className="w-full rounded-xl border border-white/15 bg-white/[0.06] p-3 font-mono text-xs text-white outline-none focus:border-white placeholder:text-white/30"
               value={deploy.username}
               onChange={(event) => setDeploy({ ...deploy, username: event.target.value })}
-              placeholder="e.g. consensus1, OhLlama, notyourllama"
+              placeholder="e.g. consensus1, OhLlama, notyourllama (or enter one name per line)"
               required
             />
+
+            <p className="text-[11px] text-white/40">
+              Tip: Enter multiple usernames separated by commas or lines to deploy multiple bots with automated Round-Robin proxy mapping!
+            </p>
           </div>
-          <Field
-            label="Server host"
-            value={deploy.host}
-            onChange={(value) => setDeploy({ ...deploy, host: value })}
-          />
-          <Field
-            label="Port"
-            type="number"
-            value={deploy.port}
-            onChange={(value) => setDeploy({ ...deploy, port: value })}
-          />
-          <Field
-            label="Minecraft version"
-            value={deploy.version}
-            onChange={(value) => setDeploy({ ...deploy, version: value })}
-          />
-          <Field
-            label="Category"
-            value={deploy.category}
-            onChange={(value) => setDeploy({ ...deploy, category: value })}
-          />
-          <label>
-            <span className="field-label">Authentication</span>
-            <select
-              className="field-control"
-              value={deploy.auth}
-              onChange={(event) => setDeploy({ ...deploy, auth: event.target.value })}
-            >
-              <option value="offline">Offline</option>
-              <option value="microsoft">Microsoft</option>
-            </select>
-          </label>
-          <label>
-            <span className="field-label">Proxy</span>
-            <select
-              className="field-control"
-              value={deploy.proxyId}
-              onChange={(event) => setDeploy({ ...deploy, proxyId: event.target.value })}
-            >
-              <option value="">Direct connection</option>
-              {proxies.map((proxy) => (
-                <option key={proxy.id} value={proxy.id}>
-                  {proxyLabel(proxy)}
-                </option>
+
+          {/* Server Config & Auth Grid */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Bot ID (Optional prefix)"
+              value={deploy.id}
+              onChange={(value) => setDeploy({ ...deploy, id: value })}
+              placeholder="Optional, generated automatically"
+            />
+            <Field
+              label="Server host"
+              value={deploy.host}
+              onChange={(value) => setDeploy({ ...deploy, host: value })}
+              placeholder="play.bananasmp.net"
+            />
+            <Field
+              label="Port"
+              type="number"
+              value={deploy.port}
+              onChange={(value) => setDeploy({ ...deploy, port: value })}
+              placeholder="25565"
+            />
+            <Field
+              label="Minecraft version"
+              value={deploy.version}
+              onChange={(value) => setDeploy({ ...deploy, version: value })}
+              placeholder="1.20.1"
+            />
+            <Field
+              label="Fleet Category"
+              value={deploy.category}
+              onChange={(value) => setDeploy({ ...deploy, category: value })}
+              placeholder="Fleet Cluster"
+            />
+            <label>
+              <span className="field-label">Account Type</span>
+              <select
+                className="field-control"
+                value={deploy.auth}
+                onChange={(event) => setDeploy({ ...deploy, auth: event.target.value })}
+              >
+                <option value="offline">Offline / Cracked</option>
+                <option value="microsoft">Microsoft Account</option>
+              </select>
+            </label>
+          </div>
+
+          {/* Cracked In-Game Auto-Auth Section */}
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <KeyRound className="h-4 w-4 text-white/70" />
+                <div>
+                  <strong className="block text-xs font-bold text-white">
+                    Cracked In-Game Auto-Auth
+                  </strong>
+                  <p className="text-[11px] text-white/50">
+                    Auto executes /register or /login when the server prompts for password.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={deploy.autoAuth}
+                onChange={(val) => setDeploy({ ...deploy, autoAuth: val })}
+              />
+            </div>
+
+            {deploy.autoAuth && (
+              <div className="pt-2">
+                <label className="mb-1 block text-[11px] font-semibold text-white/50">
+                  Shared Bot Password for Authentication
+                </label>
+                <input
+                  type="text"
+                  value={deploy.loginPassword}
+                  onChange={(e) => setDeploy({ ...deploy, loginPassword: e.target.value })}
+                  placeholder="AtlasPass123!"
+                  className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 font-mono text-sm font-medium text-white outline-none focus:border-white"
+                  required={deploy.autoAuth}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Proxy Routing & Rotation Section */}
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Network className="h-4 w-4 text-white/70" />
+                <div>
+                  <strong className="block text-xs font-bold text-white">
+                    Proxy Routing & Rotation
+                  </strong>
+                  <p className="text-[11px] text-white/50">
+                    Choose how bots connect through your SOCKS5 proxy pool.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[
+                { id: 'rotate', label: `🔄 Round-Robin (${proxies.length} Proxies)` },
+                { id: 'specific', label: '🎯 Specific Proxy' },
+                { id: 'direct', label: '🌐 Direct (No Proxy)' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setDeploy({ ...deploy, proxyMode: tab.id })}
+                  className={cn(
+                    'rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95',
+                    deploy.proxyMode === tab.id
+                      ? 'bg-white text-black shadow-sm'
+                      : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white'
+                  )}
+                >
+                  {tab.label}
+                </button>
               ))}
-            </select>
-          </label>
-          <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2">
+            </div>
+
+            {deploy.proxyMode === 'rotate' && (
+              <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white/70">
+                {proxies.length > 0 ? (
+                  <p className="text-[11px] text-white/60">
+                    🟢 Evenly cycles through {proxies.length} available proxies (1➔P#1, 2➔P#2 ... {proxies.length + 1}➔P#1).
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-white/40">
+                    ⚠️ No proxies available in your pool. Direct connections will be used.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {deploy.proxyMode === 'specific' && (
+              <div className="pt-2">
+                <label className="mb-1 block text-[11px] font-semibold text-white/50">Select Proxy</label>
+                <select
+                  className="field-control"
+                  value={deploy.proxyId}
+                  onChange={(event) => setDeploy({ ...deploy, proxyId: event.target.value })}
+                >
+                  <option value="">Choose a proxy...</option>
+                  {proxies.map((proxy) => (
+                    <option key={proxy.id} value={proxy.id}>
+                      {proxyLabel(proxy)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Reconnect & AFK toggles */}
+          <div className="grid gap-3 sm:grid-cols-2 pt-1">
             <Checkbox
               checked={deploy.autoReconnect}
               onChange={(value) => setDeploy({ ...deploy, autoReconnect: value })}
