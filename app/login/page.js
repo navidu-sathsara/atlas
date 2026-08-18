@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ArrowLeft, LockKeyhole, UserRound } from 'lucide-react';
+import { ArrowRight, ArrowLeft, LockKeyhole, UserRound, Box } from 'lucide-react';
 import { useAuth } from '@/components/providers';
 import { Button } from '@/components/ui';
 import { Marquee } from '@/components/reveal';
@@ -62,7 +62,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="mb-8 flex flex-col items-center text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[18px] border border-white/15 bg-white/[0.08] shadow-[0_8px_24px_rgba(255,255,255,0.1)] backdrop-blur-2xl">
-              <span className="text-base font-black tracking-tight text-white">NL</span>
+              <Box className="h-6 w-6 text-white" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Native</h1>
             <p className="mt-1.5 text-xs text-white/50">
