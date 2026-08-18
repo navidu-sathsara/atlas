@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '@/components/dashboard-provider';
 import { useToast } from '@/components/providers';
+import { ShardTelemetryCard } from '@/components/shard-telemetry';
 import { Button, EmptyState, PageHeader, Panel, StatCard, StatusBadge } from '@/components/ui';
 import { api, cn } from '@/lib/api';
 import { botLabel, categoryOf, relativeTime } from '@/lib/format';
@@ -131,6 +132,9 @@ export default function OverviewPage() {
         />
         <StatCard label="Categories" value={stats.categories} hint="Fleet groups" icon={Tags} tone="amber" />
       </div>
+
+      {/* Cluster Fleet Shards & Telemetry Engine */}
+      <ShardTelemetryCard />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,.8fr)]">
         {/* Fleet Grid */}

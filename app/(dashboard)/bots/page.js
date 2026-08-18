@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CircleStop,
   Cpu,
+  Dices,
   FileCode2,
   Filter,
   Grid2X2,
@@ -23,6 +24,7 @@ import {
   Send,
   Server,
   Settings2,
+  Sparkles,
   Terminal,
   Trash2,
   UserRound,
@@ -32,6 +34,7 @@ import { useDashboard } from '@/components/dashboard-provider';
 import { useAuth, useToast } from '@/components/providers';
 import { BotConsole } from '@/components/bot-console';
 import { BotConsoleTile } from '@/components/bot-console-tile';
+import { UsernameStudioModal } from '@/components/username-studio-modal';
 import { Button, Checkbox, EmptyState, Modal, PageHeader, Panel, Spinner, StatusBadge, Tabs } from '@/components/ui';
 import { api, cn } from '@/lib/api';
 import { botLabel, categoryOf, proxyLabel } from '@/lib/format';
@@ -62,6 +65,7 @@ export default function BotsPage() {
   const [selectedId, setSelectedId] = useState('');
   const [tab, setTab] = useState('console');
   const [deployOpen, setDeployOpen] = useState(false);
+  const [nameStudioOpen, setNameStudioOpen] = useState(false);
   const [deploy, setDeploy] = useState(defaultDeploy);
   const [submitting, setSubmitting] = useState(false);
   const [busy, setBusy] = useState('');
@@ -244,6 +248,9 @@ export default function BotsPage() {
 
             <Button size="sm" onClick={() => refreshBots()}>
               <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            </Button>
+            <Button size="sm" onClick={() => setNameStudioOpen(true)} className="border-white/15 bg-white/[0.08] text-white">
+              <Sparkles className="h-3.5 w-3.5 text-white" /> Name Studio
             </Button>
             <Button size="sm" variant="primary" onClick={() => setDeployOpen(true)}>
               <Plus className="h-3.5 w-3.5" /> Deploy bot
@@ -637,12 +644,25 @@ export default function BotsPage() {
             onChange={(value) => setDeploy({ ...deploy, id: value })}
             placeholder="Optional, generated automatically"
           />
-          <Field
-            label="Minecraft username"
-            value={deploy.username}
-            onChange={(value) => setDeploy({ ...deploy, username: value })}
-            placeholder="Bot username"
-          />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="field-label mb-0">Minecraft username</span>
+              <button
+                type="button"
+                onClick={() => setNameStudioOpen(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-white/70 hover:text-white transition active:scale-95"
+              >
+                <Sparkles className="h-3 w-3" /> Name Studio
+              </button>
+            </div>
+            <input
+              className="field-control"
+              value={deploy.username}
+              onChange={(event) => setDeploy({ ...deploy, username: event.target.value })}
+              placeholder="e.g. consensus1, OhLlama, notyourllama"
+              required
+            />
+          </div>
           <Field
             label="Server host"
             value={deploy.host}
@@ -706,6 +726,16 @@ export default function BotsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Atlas Name Studio & Mojang Checker Modal */}
+      <UsernameStudioModal
+        open={nameStudioOpen}
+        onClose={() => setNameStudioOpen(false)}
+        onSelectUsername={(name) => {
+          setDeploy((d) => ({ ...d, username: name }));
+          setDeployOpen(true);
+        }}
+      />
     </div>
   );
 }
