@@ -54,7 +54,7 @@ function ShellWithDashboard({ children }) {
   return <ShellFrame>{children}</ShellFrame>;
 }
 
-function FullScreenLoader({ label = 'Initializing BotHive...' }) {
+function FullScreenLoader({ label = 'Initializing Native...' }) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black">
       <div className="relative flex flex-col items-center">
@@ -112,7 +112,7 @@ function ShellFrame({ children }) {
         <Link href="/overview" className="group flex min-w-0 items-center">
           {!collapsed && (
             <span className="min-w-0">
-              <strong className="block truncate text-base font-bold tracking-tight text-white">BotHive</strong>
+              <strong className="block truncate text-base font-bold tracking-tight text-white">Native</strong>
               <small className="block truncate text-[10px] uppercase font-bold tracking-[0.16em] text-white/50">Control plane</small>
             </span>
           )}
@@ -217,7 +217,7 @@ function ShellFrame({ children }) {
             
             <div className="mb-4 flex items-center justify-between border-b border-white/[0.08] pb-4">
               <div>
-                <strong className="block text-base font-bold tracking-tight text-white">BotHive Navigation</strong>
+                <strong className="block text-base font-bold tracking-tight text-white">Native Navigation</strong>
                 <small className="text-xs text-white/40">{user.email} · {user.role}</small>
               </div>
               <button
@@ -274,7 +274,7 @@ function ShellFrame({ children }) {
       >
         <header className="sticky top-0 z-30 flex h-[64px] items-center gap-3 border-b border-white/[0.08] bg-black/85 px-4 backdrop-blur-2xl sm:h-[68px] sm:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white lg:hidden">BH</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white lg:hidden">NL</span>
             <h2 className="truncate text-[14px] font-semibold tracking-tight text-white sm:text-[15px]">{active.label}</h2>
           </div>
 

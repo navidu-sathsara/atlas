@@ -16,14 +16,14 @@ const mono = JetBrains_Mono({
 
 export const metadata = {
   title: {
-    default: 'BotHive - Infrastructure for autonomous fleets',
-    template: '%s / BotHive',
+    default: 'Native - Autonomous Fleet Control Plane',
+    template: '%s / Native',
   },
   description:
-    'BotHive is the control plane for autonomous Minecraft fleets. Deploy, orchestrate and observe hundreds of bots from one obsessively designed dashboard.',
+    'Native is the control plane for autonomous Minecraft fleets. Deploy, orchestrate and observe hundreds of bots from one obsessively designed dashboard.',
   keywords: ['bot hosting', 'automation', 'control panel', 'fleet orchestration'],
   openGraph: {
-    title: 'BotHive - Infrastructure for autonomous fleets',
+    title: 'Native - Autonomous Fleet Control Plane',
     description: 'Deploy, orchestrate and observe hundreds of bots from one control plane.',
     type: 'website',
   },

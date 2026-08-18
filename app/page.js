@@ -35,7 +35,7 @@ export default function RootPage() {
           <div className="h-2 w-2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,1)]" />
         </div>
         <p className="mt-5 font-mono text-xs tracking-wider uppercase text-white/40 animate-pulse">
-          Opening BotHive...
+          Opening Native...
         </p>
       </div>
     </div>
