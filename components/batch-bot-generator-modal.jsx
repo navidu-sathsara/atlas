@@ -4,11 +4,17 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Bot,
+  Check,
   CheckCircle2,
+  Copy,
   Cpu,
+  Crown,
+  Dices,
+  Flame,
   Globe,
   KeyRound,
   Layers,
+  Loader2,
   Network,
   RefreshCw,
   Server,
@@ -20,18 +26,45 @@ import { api, cn } from '@/lib/api';
 import { Button, Modal, Switch } from '@/components/ui';
 import { useToast } from '@/components/providers';
 
-const MATURE_DICTIONARY = [
-  'consensus', 'zeroentropy', 'nullstate', 'defragged', 'subroutine',
+const WITTY_PHRASES = [
+  'OhLlama', 'notyourllama', 'notyourfault', 'almosthuman', 'barelythere',
+  'maybeoffline', 'definitelynot', 'whoasked', 'whynotboth', 'sorrynotsorry',
+  'justvibing', 'needcoffee', 'outoffocus', 'nobraincells', 'zerocares',
+  'lowbattery', 'offlineagain', 'ctrlaltdefeat', 'laggenerator', 'afkforever',
+  'idkman', 'goodenough', 'whyamilike', 'itsfine', 'nocoffeenowork',
+  'llamastrike', 'calmbeforestorm', 'sleepdeprived', 'thoughtpolice', 'overthinking',
+  'worksforme', 'runtimepanic', 'zerotrust', 'didntask', 'blameproduction',
+  'unattended', 'itcompiled', 'silenceisgolden', 'halfconscious', 'procrastinating',
+  'overengineered', 'bareminimum', 'nodatatoshow', 'coffeeoverflow', 'systemoverload',
+  'whoami', 'dontblameme', 'ghostinmachine', 'sleepisoptional', 'terminalvelocity'
+];
+
+const TECH_PHILOSOPHY = [
+  'consensus', 'nullstate', 'zeroentropy', 'defragged', 'subroutine',
   'deadlock', 'hyperthread', 'paperplane', 'coldbrew', 'ambientnoise',
   'bitshift', 'monolith', 'subtlechaos', 'halftone', 'packetloss',
   'syntaxerror', 'stacktrace', 'eventloop', 'asyncawait', 'nullpointer',
-  'heapexhaust', 'bytecode', 'checksum', 'hashcollision', 'racecondition',
-  'coredecay', 'microcode', 'immutable', 'deterministic', 'OhLlama',
-  'notyourllama', 'notyourfault', 'almosthuman', 'barelythere', 'maybeoffline',
-  'definitelynot', 'whoasked', 'whynotboth', 'sorrynotsorry', 'justvibing',
-  'needcoffee', 'nocoffeenowork', 'worksforme', 'runtimepanic', 'ghostinmachine',
-  'velvet', 'zenith', 'solitude', 'lucid', 'frost', 'halcyon', 'obsidian',
-  'spectrum', 'static', 'radiance', 'vertex', 'chroma', 'monochrome', 'mirage'
+  'runtimeerror', 'heapexhaust', 'garbagecollect', 'bytecode', 'checksum',
+  'hashcollision', 'racecondition', 'coredecay', 'endianness', 'statemachine',
+  'microcode', 'pointermath', 'stackframe', 'pipelineflush', 'kernelpanic',
+  'syscall', 'contextswitch', 'memleak', 'bitflip', 'zeroday',
+  'entropist', 'monad', 'functor', 'closure', 'immutable',
+  'deterministic', 'heuristic', 'polymorphic', 'tautology', 'solipsist'
+];
+
+const MINIMAL_AESTHETIC = [
+  'velvet', 'zenith', 'solitude', 'lucid', 'echo',
+  'frost', 'halcyon', 'obsidian', 'spectrum', 'solaris',
+  'meridian', 'static', 'radiance', 'vertex', 'chroma',
+  'monochrome', 'dusk', 'dawn', 'cinder', 'mirage',
+  'vortex', 'quartz', 'nebula', 'ethereal', 'solace',
+  'axiom', 'drift', 'vesper', 'valence', 'prism'
+];
+
+const MATURE_DICTIONARY = [
+  ...TECH_PHILOSOPHY,
+  ...WITTY_PHRASES,
+  ...MINIMAL_AESTHETIC,
 ];
 
 export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
@@ -46,6 +79,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
   const [prefix, setPrefix] = useState('bot_');
   const [startNumber, setStartNumber] = useState(1);
   const [customText, setCustomText] = useState('');
+  const [shuffleKey, setShuffleKey] = useState(0);
 
   // Server & Connection
   const [host, setHost] = useState('play.bananasmp.net');
@@ -60,6 +94,11 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
   // Auto-Auth Mode (Cracked servers / AuthMe / nLogin)
   const [enableAuthHandshake, setEnableAuthHandshake] = useState(true);
   const [loginPassword, setLoginPassword] = useState('AtlasPass123!');
+
+  // Real-time Mojang / Premium Checker State
+  const [mojangData, setMojangData] = useState({});
+  const [verifying, setVerifying] = useState(false);
+  const [previewFilter, setPreviewFilter] = useState('all'); // 'all' | 'premium' | 'available'
 
   // Fetch available proxies on modal open
   useEffect(() => {
@@ -96,17 +135,27 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
         .filter(Boolean);
     }
 
+    // Seeded/offset pool for mature dictionary
+    const pool = [...MATURE_DICTIONARY];
+    if (shuffleKey > 0) {
+      const offset = (shuffleKey * 17) % pool.length;
+      pool.push(...pool.splice(0, offset));
+    }
+
     for (let i = 0; i < qty; i++) {
       let uname = '';
       if (namingMode === 'custom') {
         uname = customNames[i] || `bot_${i + 1}`;
       } else if (namingMode === 'mature') {
-        const base = MATURE_DICTIONARY[i % MATURE_DICTIONARY.length];
-        const suffix = Math.floor(i / MATURE_DICTIONARY.length) + 1;
-        uname = suffix > 1 ? `${base}${suffix}` : base;
+        const base = pool[i % pool.length];
+        const cycle = Math.floor(i / pool.length) + (shuffleKey > 0 ? (shuffleKey % 5) : 0);
+        uname = cycle > 0 ? `${base}${cycle + 1}` : base;
       } else {
         uname = `${prefix || 'bot_'}${parseInt(startNumber) + i}`;
       }
+
+      // Clamp to max 16 chars (Minecraft Java standard)
+      if (uname.length > 16) uname = uname.slice(0, 16);
 
       // Round-Robin proxy mapping
       let assignedProxy = null;
@@ -125,7 +174,63 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
     }
 
     return list;
-  }, [quantity, namingMode, prefix, startNumber, customText, useProxies, proxies]);
+  }, [quantity, namingMode, prefix, startNumber, customText, shuffleKey, useProxies, proxies]);
+
+  // Real-time Mojang / Premium Batch Verification Effect
+  useEffect(() => {
+    if (!open || previewRoster.length === 0) return;
+    const names = [...new Set(previewRoster.map((b) => b.username))];
+    
+    // Check if we already have all names cached
+    const missing = names.filter((n) => !mojangData[n]);
+    if (missing.length === 0) return;
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      setVerifying(true);
+      try {
+        const res = await api('/check-usernames', {
+          method: 'POST',
+          body: JSON.stringify({ names: missing }),
+        });
+        if (active && res.results) {
+          setMojangData((prev) => ({ ...prev, ...res.results }));
+        }
+      } catch (_) {
+        // Fallback silently
+      } finally {
+        if (active) setVerifying(false);
+      }
+    }, 200);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [open, previewRoster, mojangData]);
+
+  // Summary counts of Premium vs Available in the preview
+  const { premiumCount, availableCount } = useMemo(() => {
+    let prem = 0;
+    let avail = 0;
+    previewRoster.forEach((b) => {
+      const data = mojangData[b.username];
+      if (data?.isPremium) prem++;
+      else if (data) avail++;
+    });
+    return { premiumCount: prem, availableCount: avail };
+  }, [previewRoster, mojangData]);
+
+  // Filtered Preview Roster
+  const filteredPreview = useMemo(() => {
+    if (previewFilter === 'premium') {
+      return previewRoster.filter((b) => mojangData[b.username]?.isPremium);
+    }
+    if (previewFilter === 'available') {
+      return previewRoster.filter((b) => !mojangData[b.username]?.isPremium);
+    }
+    return previewRoster;
+  }, [previewRoster, previewFilter, mojangData]);
 
   const handleGenerate = async (e) => {
     e?.preventDefault();
@@ -166,7 +271,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
       open={open}
       onClose={onClose}
       title="⚡ Mass Bot Generator & Fleet Orchestrator"
-      description="Deploy dozens of configured bots instantly with automated Round-Robin proxy mesh distribution and cracked auto-auth handshakes."
+      description="Deploy dozens of configured bots instantly with automated Round-Robin proxy mesh distribution, cracked auto-auth handshakes, and live Mojang Premium account checks."
       size="xl"
     >
       <form onSubmit={handleGenerate} className="space-y-6">
@@ -211,7 +316,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                       type="button"
                       onClick={() => setQuantity(q)}
                       className={cn(
-                        'rounded-lg px-2.5 py-1 text-xs font-bold transition',
+                        'rounded-lg px-2.5 py-1 text-xs font-bold transition active:scale-95',
                         quantity === q
                           ? 'bg-white text-black shadow-sm'
                           : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
@@ -249,13 +354,13 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
               </label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block text-[11px] font-semibold text-white/50">Server IP / Host</label>
+                  <label className="mb-1 block text-[11px] font-semibold text-white/50">Host / IP</label>
                   <input
                     type="text"
                     value={host}
                     onChange={(e) => setHost(e.target.value)}
                     placeholder="play.bananasmp.net"
-                    className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 text-sm font-medium text-white outline-none focus:border-white"
+                    className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 font-mono text-sm font-medium text-white outline-none focus:border-white"
                     required
                   />
                 </div>
@@ -265,11 +370,14 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                     type="number"
                     value={port}
                     onChange={(e) => setPort(parseInt(e.target.value) || 25565)}
-                    className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 text-sm font-medium text-white outline-none focus:border-white"
+                    placeholder="25565"
+                    className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 font-mono text-sm font-medium text-white outline-none focus:border-white"
+                    required
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-1">
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold text-white/50">Version</label>
                   <input
@@ -277,7 +385,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                     value={version}
                     onChange={(e) => setVersion(e.target.value)}
                     placeholder="1.20.1"
-                    className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 text-sm font-medium text-white outline-none focus:border-white"
+                    className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 font-mono text-sm font-medium text-white outline-none focus:border-white"
                   />
                 </div>
                 <div>
@@ -285,14 +393,14 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                   <select
                     value={auth}
                     onChange={(e) => setAuth(e.target.value)}
-                    className="w-full rounded-xl border border-white/15 bg-[#121212] px-3.5 py-2 text-sm font-medium text-white outline-none focus:border-white"
+                    className="w-full rounded-xl border border-white/15 bg-[#141416] px-3 py-2 text-sm font-semibold text-white outline-none focus:border-white"
                   >
                     <option value="offline">Offline / Cracked</option>
-                    <option value="microsoft">Microsoft Account</option>
+                    <option value="microsoft">Microsoft (Online)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-white/50">Category Tag</label>
+                  <label className="mb-1 block text-[11px] font-semibold text-white/50">Fleet Category</label>
                   <input
                     type="text"
                     value={category}
@@ -304,17 +412,17 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
               </div>
             </div>
 
-            {/* Section 3: Auto-Register & Auto-Login Handshake */}
+            {/* Section 3: In-Game Auto-Auth (Cracked / AuthMe / nLogin Handshake) */}
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <KeyRound className="h-4 w-4 text-white/70" />
                   <div>
                     <strong className="block text-xs font-bold text-white">
-                      Auto-Register & Auto-Login Handshake
+                      Cracked In-Game Auto-Auth
                     </strong>
                     <p className="text-[11px] text-white/50">
-                      Executes <code className="text-white font-mono">/register</code> & <code className="text-white font-mono">/login</code> on spawn.
+                      Auto executes /register or /login when server prompts.
                     </p>
                   </div>
                 </div>
@@ -343,9 +451,20 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
           <div className="space-y-5">
             {/* Section 4: Naming Strategy */}
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              <label className="text-xs font-bold uppercase tracking-wider text-white/70">
-                3. Bot Naming Strategy
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/70">
+                  3. Bot Naming Strategy
+                </label>
+                {namingMode === 'mature' && (
+                  <button
+                    type="button"
+                    onClick={() => setShuffleKey((k) => k + 1)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-white/70 hover:text-white transition active:scale-95"
+                  >
+                    <Dices className="h-3.5 w-3.5" /> Re-roll Names
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {[
                   { id: 'prefix', label: 'Sequential Prefix (bot_1)' },
@@ -357,7 +476,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                     type="button"
                     onClick={() => setNamingMode(tab.id)}
                     className={cn(
-                      'rounded-xl px-3 py-1.5 text-xs font-bold transition',
+                      'rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95',
                       namingMode === tab.id
                         ? 'bg-white text-black shadow-sm'
                         : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white'
@@ -389,6 +508,22 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                       className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 text-sm font-medium text-white outline-none focus:border-white"
                     />
                   </div>
+                </div>
+              )}
+
+              {namingMode === 'mature' && (
+                <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-white" />
+                    <span>Curated tech, witty & mature name banks.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShuffleKey((k) => k + 1)}
+                    className="rounded-lg bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-white/20 transition active:scale-95"
+                  >
+                    Shuffle
+                  </button>
                 </div>
               )}
 
@@ -424,68 +559,130 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                 </div>
                 <Switch checked={useProxies} onChange={setUseProxies} />
               </div>
-
-              {useProxies && (
-                <div className="rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white/70 space-y-1">
-                  <div className="flex items-center justify-between font-semibold">
-                    <span className="text-white">
-                      {proxies.length > 0
-                        ? `🟢 ${proxies.length} Proxies in Pool`
-                        : '⚠️ No proxies in pool (direct connection)'}
-                    </span>
-                    <span className="font-mono text-[10px] text-white/50">
-                      Cycle: 1➔1, 2➔2 ... {proxies.length > 0 ? `${proxies.length + 1}➔1` : ''}
-                    </span>
-                  </div>
-                  {proxies.length > 0 && (
-                    <p className="text-[11px] text-white/50">
-                      When deploying {quantity} bots, proxy #{1} to #{proxies.length} are attached in sequence and wrap around automatically.
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* Section 6: Live Deployment Preview Roster */}
+            {/* Section 6: Live Deployment Preview Roster with Mojang / Premium Verification */}
             <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-white/70">
-                  Live Preview ({previewRoster.length} Bots)
-                </span>
-                <span className="text-[11px] text-white/40 font-mono">First 12 bots</span>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+                    Live Preview ({previewRoster.length} Bots)
+                  </span>
+                  {verifying ? (
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] text-white/50">
+                      <Loader2 className="h-3 w-3 animate-spin text-white" /> Checking Mojang...
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      {premiumCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                          👑 {premiumCount} Premium
+                        </span>
+                      )}
+                      {availableCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-white/60">
+                          ⭐ {availableCount} Free
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'premium', label: '👑 Premium' },
+                    { id: 'available', label: '⭐ Free' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setPreviewFilter(f.id)}
+                      className={cn(
+                        'rounded-md px-2 py-0.5 text-[10px] font-bold transition active:scale-95',
+                        previewFilter === f.id
+                          ? 'bg-white text-black'
+                          : 'bg-white/[0.05] text-white/60 hover:text-white'
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 console-scrollbar">
-                {previewRoster.slice(0, 12).map((b) => (
-                  <div
-                    key={b.index}
-                    className="flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-black/50 p-2"
-                  >
-                    <img
-                      src={`https://mc-heads.net/avatar/${encodeURIComponent(b.username)}/48`}
-                      alt={b.username}
-                      className="h-7 w-7 rounded-lg border border-white/15 bg-black/60 object-cover shrink-0"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/48';
-                      }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <strong className="block truncate text-xs font-bold text-white">
-                        {b.username}
-                      </strong>
-                      <div className="truncate font-mono text-[10px] text-white/50">
-                        {b.assignedProxy ? (
-                          <span className="text-white/80">
-                            P#{b.proxyIndex + 1}: {b.assignedProxy.host}:{b.assignedProxy.port}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 console-scrollbar">
+                {filteredPreview.slice(0, 24).map((b) => {
+                  const mData = mojangData[b.username];
+                  const isPremium = mData?.isPremium;
+                  const avatarUrl =
+                    mData?.avatar ||
+                    (mData?.uuid
+                      ? `https://mc-heads.net/avatar/${mData.uuid}/48`
+                      : `https://mc-heads.net/avatar/${encodeURIComponent(b.username)}/48`);
+
+                  return (
+                    <div
+                      key={b.index}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-xl border p-2 transition-all duration-150',
+                        isPremium
+                          ? 'border-white/25 bg-white/[0.08] shadow-[0_0_12px_rgba(255,255,255,0.06)]'
+                          : 'border-white/[0.08] bg-black/50'
+                      )}
+                    >
+                      <div className="relative h-8 w-8 shrink-0">
+                        <img
+                          src={avatarUrl}
+                          alt={b.username}
+                          className="h-8 w-8 rounded-lg border border-white/15 bg-black/60 object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/48';
+                          }}
+                        />
+                        {isPremium && (
+                          <span
+                            className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[8px] text-black font-black shadow-sm"
+                            title="Mojang Premium Account"
+                          >
+                            👑
                           </span>
-                        ) : (
-                          <span className="text-white/30">Direct IP</span>
                         )}
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <strong className="truncate text-xs font-bold text-white">
+                            {b.username}
+                          </strong>
+                          {verifying && !mData ? (
+                            <span className="flex items-center gap-0.5 text-[9px] text-white/40">
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            </span>
+                          ) : isPremium ? (
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/30 bg-white/[0.15] px-1.5 py-0.2 text-[9px] font-bold text-white shadow-sm">
+                              👑 Premium
+                            </span>
+                          ) : (
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.2 text-[9px] font-medium text-white/50">
+                              ⭐ Free
+                            </span>
+                          )}
+                        </div>
+                        <div className="truncate font-mono text-[10px] text-white/50">
+                          {b.assignedProxy ? (
+                            <span className="text-white/80">
+                              P#{b.proxyIndex + 1}: {b.assignedProxy.host}:{b.assignedProxy.port}
+                            </span>
+                          ) : (
+                            <span className="text-white/30">Direct IP</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -496,7 +693,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" loading={loading} className="gap-2 px-8">
+          <Button type="submit" variant="primary" loading={loading} className="gap-2 px-8 shadow-lg">
             <Zap className="h-4 w-4" /> Deploy {quantity} Bots Now
           </Button>
         </div>

@@ -1555,7 +1555,7 @@ async function handleHttp(req, res, state) {
 
         try {
             const mojangRes = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(name)}`, {
-                headers: { 'User-Agent': 'BotHive-ControlPlane/4.0' }
+                headers: { 'User-Agent': 'Native-ControlPlane/4.0' }
             });
 
             if (mojangRes.status === 200) {
@@ -1577,6 +1577,7 @@ async function handleHttp(req, res, state) {
                     isPremium: false,
                     status: 'available',
                     avatar: `https://mc-heads.net/avatar/MHF_Steve/64`,
+                    head: `https://mc-heads.net/head/MHF_Steve/32`,
                     message: 'Available / Unregistered on Mojang'
                 });
             } else {
@@ -1592,6 +1593,7 @@ async function handleHttp(req, res, state) {
                             isPremium: true,
                             status: 'premium',
                             avatar: data.textures?.skin?.url || `https://mc-heads.net/avatar/${data.uuid}/64`,
+                            head: `https://mc-heads.net/head/${data.uuid}/32`,
                             message: 'Registered Minecraft Java Premium account'
                         });
                     }
@@ -1601,6 +1603,8 @@ async function handleHttp(req, res, state) {
                     name,
                     isPremium: false,
                     status: 'available',
+                    avatar: `https://mc-heads.net/avatar/MHF_Steve/64`,
+                    head: `https://mc-heads.net/head/MHF_Steve/32`,
                     message: 'Available / Unregistered on Mojang'
                 });
             }
@@ -1610,9 +1614,90 @@ async function handleHttp(req, res, state) {
                 name,
                 isPremium: false,
                 status: 'offline_valid',
+                avatar: `https://mc-heads.net/avatar/MHF_Steve/64`,
+                head: `https://mc-heads.net/head/MHF_Steve/32`,
                 message: 'Format is valid for offline/cracked deployment'
             });
         }
+    }
+
+    // ── Batch Minecraft Username Checker ─────────────────────────
+    if (req.method === 'POST' && p === '/api/check-usernames') {
+        const body = await parseJson(req);
+        const names = Array.isArray(body.names) ? body.names.slice(0, 100) : [];
+        const results = {};
+
+        await Promise.all(names.map(async (rawName) => {
+            const name = (rawName || '').trim();
+            if (!name || !/^[a-zA-Z0-9_]{1,16}$/.test(name)) {
+                results[name] = { name, isPremium: false, status: 'invalid', message: 'Invalid format' };
+                return;
+            }
+
+            try {
+                const mojangRes = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(name)}`, {
+                    headers: { 'User-Agent': 'Native-ControlPlane/4.0' }
+                });
+
+                if (mojangRes.status === 200) {
+                    const data = await mojangRes.json();
+                    results[name] = {
+                        name: data.name || name,
+                        uuid: data.id,
+                        isPremium: true,
+                        status: 'premium',
+                        avatar: `https://mc-heads.net/avatar/${data.id}/64`,
+                        head: `https://mc-heads.net/head/${data.id}/32`,
+                        message: 'Registered Minecraft Java Premium account'
+                    };
+                } else if (mojangRes.status === 204 || mojangRes.status === 404) {
+                    results[name] = {
+                        name,
+                        isPremium: false,
+                        status: 'available',
+                        avatar: `https://mc-heads.net/avatar/MHF_Steve/64`,
+                        head: `https://mc-heads.net/head/MHF_Steve/32`,
+                        message: 'Available / Unregistered on Mojang'
+                    };
+                } else {
+                    try {
+                        const ashconRes = await fetch(`https://api.ashcon.app/mojang/v2/user/${encodeURIComponent(name)}`);
+                        if (ashconRes.status === 200) {
+                            const data = await ashconRes.json();
+                            results[name] = {
+                                name: data.username || name,
+                                uuid: data.uuid,
+                                isPremium: true,
+                                status: 'premium',
+                                avatar: data.textures?.skin?.url || `https://mc-heads.net/avatar/${data.uuid}/64`,
+                                head: `https://mc-heads.net/head/${data.uuid}/32`,
+                                message: 'Registered Minecraft Java Premium account'
+                            };
+                            return;
+                        }
+                    } catch (_) {}
+                    results[name] = {
+                        name,
+                        isPremium: false,
+                        status: 'available',
+                        avatar: `https://mc-heads.net/avatar/MHF_Steve/64`,
+                        head: `https://mc-heads.net/head/MHF_Steve/32`,
+                        message: 'Available / Unregistered on Mojang'
+                    };
+                }
+            } catch (err) {
+                results[name] = {
+                    name,
+                    isPremium: false,
+                    status: 'available',
+                    avatar: `https://mc-heads.net/avatar/MHF_Steve/64`,
+                    head: `https://mc-heads.net/head/MHF_Steve/32`,
+                    message: 'Format is valid for offline/cracked deployment'
+                };
+            }
+        }));
+
+        return json(res, 200, { ok: true, results });
     }
 
     // ── Fleet Shards & Cluster Telemetry ──────────────────────────
