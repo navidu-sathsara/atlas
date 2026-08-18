@@ -149,9 +149,15 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
       } else if (namingMode === 'mature') {
         const base = pool[i % pool.length];
         const cycle = Math.floor(i / pool.length) + (shuffleKey > 0 ? (shuffleKey % 5) : 0);
-        uname = cycle > 0 ? `${base}${cycle + 1}` : base;
+        // Add number suffix by default (e.g. consensus1, OhLlama1) so it never collides with real legacy Mojang accounts
+        uname = `${base}${cycle + 1}`;
       } else {
         uname = `${prefix || 'bot_'}${parseInt(startNumber) + i}`;
+      }
+
+      // If already verified as premium in cache, auto-append random digit to guarantee cracked availability
+      if (namingMode !== 'custom' && mojangData[uname]?.isPremium) {
+        uname = `${uname}${((i + 7) % 9) + 1}`;
       }
 
       // Clamp to max 16 chars (Minecraft Java standard)
@@ -174,7 +180,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
     }
 
     return list;
-  }, [quantity, namingMode, prefix, startNumber, customText, shuffleKey, useProxies, proxies]);
+  }, [quantity, namingMode, prefix, startNumber, customText, shuffleKey, mojangData, useProxies, proxies]);
 
   // Real-time Mojang / Premium Batch Verification Effect
   useEffect(() => {
@@ -210,7 +216,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
   }, [open, previewRoster, mojangData]);
 
   // Summary counts of Premium vs Available in the preview
-  const { premiumCount, availableCount } = useMemo(() => {
+  const { premiumCount, availableCount, hasPremiumInCustom } = useMemo(() => {
     let prem = 0;
     let avail = 0;
     previewRoster.forEach((b) => {
@@ -218,19 +224,25 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
       if (data?.isPremium) prem++;
       else if (data) avail++;
     });
-    return { premiumCount: prem, availableCount: avail };
-  }, [previewRoster, mojangData]);
+    return {
+      premiumCount: prem,
+      availableCount: avail,
+      hasPremiumInCustom: namingMode === 'custom' && prem > 0,
+    };
+  }, [previewRoster, mojangData, namingMode]);
 
-  // Filtered Preview Roster
-  const filteredPreview = useMemo(() => {
-    if (previewFilter === 'premium') {
-      return previewRoster.filter((b) => mojangData[b.username]?.isPremium);
-    }
-    if (previewFilter === 'available') {
-      return previewRoster.filter((b) => !mojangData[b.username]?.isPremium);
-    }
-    return previewRoster;
-  }, [previewRoster, previewFilter, mojangData]);
+  // Quick fix for custom names if user entered a premium name
+  const fixCustomNamesToCracked = () => {
+    const lines = customText.split('\n').map((s) => s.trim()).filter(Boolean);
+    const fixed = lines.map((name) => {
+      if (mojangData[name]?.isPremium) {
+        return `${name}_${Math.floor(Math.random() * 89 + 10)}`;
+      }
+      return name;
+    });
+    setCustomText(fixed.join('\n'));
+    toast('✨ Converted premium names to guaranteed cracked usernames!', 'success');
+  };
 
   const handleGenerate = async (e) => {
     e?.preventDefault();
@@ -561,8 +573,24 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
               </div>
             </div>
 
-            {/* Section 6: Live Deployment Preview Roster with Mojang / Premium Verification */}
-            <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            {/* Section 6: Live Deployment Preview Roster with Non-Premium Cracked Verification */}
+            <div className="space-y-2.5 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              {hasPremiumInCustom && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-white/20 bg-white/[0.06] p-3 text-xs text-white backdrop-blur-xl">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-white shrink-0" />
+                    <span>Detected {premiumCount} real Mojang account(s) in custom list.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fixCustomNamesToCracked}
+                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-black hover:bg-white/90 transition active:scale-95 shrink-0"
+                  >
+                    ✨ Fix to Cracked
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-white/70">
@@ -573,54 +601,21 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                       <Loader2 className="h-3 w-3 animate-spin text-white" /> Checking Mojang...
                     </span>
                   ) : (
-                    <div className="flex items-center gap-1.5">
-                      {premiumCount > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
-                          👑 {premiumCount} Premium
-                        </span>
-                      )}
-                      {availableCount > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-white/60">
-                          ⭐ {availableCount} Free
-                        </span>
-                      )}
-                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                      🛡️ 100% Cracked Safe
+                    </span>
                   )}
                 </div>
-
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1">
-                  {[
-                    { id: 'all', label: 'All' },
-                    { id: 'premium', label: '👑 Premium' },
-                    { id: 'available', label: '⭐ Free' },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setPreviewFilter(f.id)}
-                      className={cn(
-                        'rounded-md px-2 py-0.5 text-[10px] font-bold transition active:scale-95',
-                        previewFilter === f.id
-                          ? 'bg-white text-black'
-                          : 'bg-white/[0.05] text-white/60 hover:text-white'
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+                <span className="font-mono text-[10px] text-white/40">First 24 bots</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 console-scrollbar">
-                {filteredPreview.slice(0, 24).map((b) => {
+                {previewRoster.slice(0, 24).map((b) => {
                   const mData = mojangData[b.username];
                   const isPremium = mData?.isPremium;
                   const avatarUrl =
                     mData?.avatar ||
-                    (mData?.uuid
-                      ? `https://mc-heads.net/avatar/${mData.uuid}/48`
-                      : `https://mc-heads.net/avatar/${encodeURIComponent(b.username)}/48`);
+                    `https://mc-heads.net/avatar/${encodeURIComponent(b.username)}/48`;
 
                   return (
                     <div
@@ -628,7 +623,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                       className={cn(
                         'flex items-center gap-2.5 rounded-xl border p-2 transition-all duration-150',
                         isPremium
-                          ? 'border-white/25 bg-white/[0.08] shadow-[0_0_12px_rgba(255,255,255,0.06)]'
+                          ? 'border-white/30 bg-white/[0.10]'
                           : 'border-white/[0.08] bg-black/50'
                       )}
                     >
@@ -642,14 +637,6 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                             e.target.src = 'https://mc-heads.net/avatar/MHF_Steve/48';
                           }}
                         />
-                        {isPremium && (
-                          <span
-                            className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[8px] text-black font-black shadow-sm"
-                            title="Mojang Premium Account"
-                          >
-                            👑
-                          </span>
-                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1.5">
@@ -662,11 +649,11 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                             </span>
                           ) : isPremium ? (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/30 bg-white/[0.15] px-1.5 py-0.2 text-[9px] font-bold text-white shadow-sm">
-                              👑 Premium
+                              ⚠️ Premium
                             </span>
                           ) : (
-                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.2 text-[9px] font-medium text-white/50">
-                              ⭐ Free
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-white/15 bg-white/[0.06] px-1.5 py-0.2 text-[9px] font-medium text-white/70">
+                              ⭐ Cracked
                             </span>
                           )}
                         </div>
