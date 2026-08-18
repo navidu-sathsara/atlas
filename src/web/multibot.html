@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BotHive Control Panel</title>
+<link rel="icon" href="/assets/bothive-mark.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<link rel="stylesheet" href="/assets/styles/base.css?v=20260814-4">
+<link rel="stylesheet" href="/assets/styles/workspace.css?v=20260814-4">
+<link rel="stylesheet" href="/assets/styles/components.css?v=20260814-4">
+<link rel="stylesheet" href="/assets/styles/bothive.css?v=20260815-1">
+</head>
+
+<body>
+
+<!-- ============================ LOGIN ============================ -->
+<div id="login">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="logo brand-mark">BH</div>
+    <h2>BotHive</h2>
+    <p>Sign in to your control panel</p>
+    <div class="fld">
+      <label for="liEmail">Username or email</label>
+      <input id="liEmail" type="text" autocomplete="username" required spellcheck="false" placeholder="username or you@example.com" autofocus>
+    </div>
+    <div class="fld">
+      <label for="liPass">Password</label>
+      <input id="liPass" type="password" autocomplete="current-password" required placeholder="••••••••">
+    </div>
+    <div class="login-err" id="liErr" role="alert"></div>
+    <button class="btn pri" id="liBtn" type="submit">Sign in</button>
+  </form>
+</div>
+
+<!-- ============================= APP ============================= -->
+<div id="app" style="display:none">
+
+  <!-- Mobile top bar -->
+  <header id="topbar">
+    <button class="tb-btn" id="tbMenu" aria-label="Open bot list"></button>
+    <span class="tb-logo brand-mark" aria-hidden="true">BH</span>
+    <h2 id="tbTitle">Overview</h2>
+    <button class="tb-btn" id="tbPal" aria-label="Command palette"></button>
+    <button class="tb-btn" id="tbLogout" aria-label="Sign out"></button>
+  </header>
+
+  <div id="scrim"></div>
+
+  <!-- Desktop rail -->
+  <nav id="rail" aria-label="Primary">
+    <div class="rail-brand" aria-label="BotHive">
+      <div class="brand-mark">BH</div>
+      <div><strong>BotHive</strong><small>Control Panel</small></div>
+    </div>
+    <div class="rail-section">Workspace</div>
+    <button class="rail-btn" data-nav="fleet" aria-label="Overview"><span class="rail-label">Overview</span><span class="rail-badge" id="nFleet">0</span></button>
+    <button class="rail-btn" data-nav="bots" aria-label="Bot console"><span class="rail-label">Bot console</span></button>
+    <button class="rail-btn" data-nav="proxies" aria-label="Network"><span class="rail-label">Network</span><span class="rail-badge" id="nProx">0</span></button>
+    <div class="rail-section">Automation</div>
+    <button class="rail-btn" data-nav="cmds" aria-label="Aliases"><span class="rail-label">Aliases</span></button>
+    <button class="rail-btn" data-nav="library" aria-label="Script library"><span class="rail-label">Script library</span></button>
+    <button class="rail-btn" data-nav="schedules" aria-label="Schedules"><span class="rail-label">Schedules</span></button>
+    <div class="rail-section admin-only">Administration</div>
+    <button class="rail-btn" data-nav="users" aria-label="Users"><span class="rail-label">Users</span></button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" data-nav="account" aria-label="Account settings"><span class="rail-label">Account</span></button>
+    <button class="rail-btn" id="btnPal" aria-label="Command palette"><span class="rail-label">Quick search</span></button>
+    <button class="rail-btn" id="btnLogout" aria-label="Sign out"><span class="rail-label">Sign out</span></button>
+  </nav>
+
+  <!-- Bot list / drawer -->
+  <aside id="list">
+    <div class="list-head">
+      <div class="search">
+        <input id="botSearch" placeholder="Filter bots…" aria-label="Filter bots" autocomplete="off">
+      </div>
+      <button class="btn icon" id="btnSelList" data-tip="Select all visible" aria-label="Select all visible"></button>
+      <button class="btn icon pri" id="btnAddBot" data-tip="Deploy bot" aria-label="Deploy bot"></button>
+    </div>
+    <div class="list-body" id="botList"></div>
+  </aside>
+
+  <!-- Detail -->
+  <main id="detail">
+
+    <!-- ---------------------------- FLEET ---------------------------- -->
+    <section class="page" data-page="fleet">
+      <div class="head">
+        <h1>Overview</h1>
+        <span class="sub" id="fleetSub"></span>
+        <div class="grow"></div>
+        <div class="head-acts">
+          <div class="seg" id="fleetFilter" role="group" aria-label="Filter by status">
+            <button data-f="all" class="on">All</button>
+            <button data-f="running">Running</button>
+            <button data-f="stopped">Stopped</button>
+            <button data-f="error">Error</button>
+          </div>
+          <button class="btn sm" id="btnSelAll">Select all</button>
+          <button class="btn sm pri" id="btnAddBot2">Deploy</button>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Bots</div><div class="v" id="stTotal">0</div></div>
+        <div class="stat"><div class="k">Running</div><div class="v run" id="stRun">0</div></div>
+        <div class="stat"><div class="k">Stopped</div><div class="v" id="stStop">0</div></div>
+        <div class="stat"><div class="k">Errors</div><div class="v err" id="stErr">0</div></div>
+        <div class="stat"><div class="k">Verifying</div><div class="v wrn" id="stVer">0</div></div>
+        <div class="stat"><div class="k">Categories</div><div class="v" id="stCat">0</div></div>
+        <div class="stat"><div class="k">Proxy slots</div><div class="v" id="stSlots">0</div></div>
+      </div>
+      <div class="fleet-tools">
+        <span class="lbl">Layout</span>
+        <div class="seg" id="tileGroupSeg" role="group" aria-label="Grouping">
+          <button data-g="flat" class="on" data-testid="tiles-group-flat">Free</button>
+          <button data-g="category" data-testid="tiles-group-category">By category</button>
+        </div>
+        <div class="seg" id="tileDensitySeg" role="group" aria-label="Density">
+          <button data-d="comfortable" class="on" data-testid="tiles-density-comfortable">Comfortable</button>
+          <button data-d="compact" data-testid="tiles-density-compact">Compact</button>
+        </div>
+        <div class="grow"></div>
+        <button class="btn sm" id="btnTileReset" data-testid="tiles-reset-order">Reset order</button>
+      </div>
+      <div class="tiles-scroll" id="tilesScroll">
+        <div id="tilesHost" data-testid="fleet-tiles"></div>
+      </div>
+    </section>
+
+    <!-- ----------------------------- BOT ----------------------------- -->
+    <section class="page" data-page="bots">
+      <div id="bhero">
+        <div class="bhero-top">
+          <div class="bavatar" id="bAvatar"><span id="bInit">–</span><span class="dot" id="bDot"></span></div>
+          <div class="bident">
+            <div class="bident-l1">
+              <h1 id="bId">No bot selected</h1>
+              <span class="pill" id="bPill">—</span>
+            </div>
+            <div class="bmeta" id="bMeta"></div>
+          </div>
+          <div class="actions" id="bActions"></div>
+        </div>
+        <div class="bstats" id="bStats"></div>
+      </div>
+      <div class="tabs" id="botTabs" role="tablist">
+        <button class="tab on" data-tab="console">Console</button>
+        <button class="tab" data-tab="config">Config</button>
+        <button class="tab" data-tab="inventory">Inventory</button>
+        <button class="tab" data-tab="modules">Modules<span class="tab-n" id="tnMod">0</span></button>
+        <button class="tab" data-tab="scripts">Scripts<span class="tab-n" id="tnScr">0</span></button>
+      </div>
+
+      <div class="pane on" data-pane="console">
+        <div class="term-grid" id="termGrid"></div>
+      </div>
+
+      <div class="pane" data-pane="config">
+        <form id="cfgForm"></form>
+      </div>
+
+      <div class="pane" data-pane="inventory">
+        <div class="head">
+          <h1>Live inventory</h1>
+          <span class="sub" id="invSub"></span>
+          <div class="grow"></div>
+          <div class="head-acts"><button class="btn sm" id="btnInvRefresh">Refresh</button></div>
+        </div>
+        <div class="inv" id="invGrid"></div>
+      </div>
+
+      <div class="pane" data-pane="modules"><div id="modList"></div></div>
+
+      <div class="pane" data-pane="scripts">
+        <div class="head">
+          <h1>Scripts</h1>
+          <span class="sub">Private to this bot owner</span>
+          <div class="grow"></div>
+          <div class="head-acts">
+            <button class="btn sm" id="btnReloadScripts">Reload</button>
+            <button class="btn sm pri" id="btnAddBotScript">New script</button>
+          </div>
+        </div>
+        <div id="scrList"></div>
+      </div>
+    </section>
+
+    <!-- --------------------------- PROXIES --------------------------- -->
+    <section class="page" data-page="proxies">
+      <div class="head">
+        <h1>Proxy pool</h1>
+        <span class="sub" id="pxSub"></span>
+        <div class="grow"></div>
+        <div class="head-acts">
+          <button class="btn sm" id="btnPxAssign">Auto-assign</button>
+          <button class="btn sm" id="btnPxCheck">Test all</button>
+          <button class="btn sm pri" id="btnPxAdd">Add</button>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Proxies</div><div class="v" id="pxTotal">0</div></div>
+        <div class="stat"><div class="k">Slots used</div><div class="v" id="pxUsed">0</div></div>
+        <div class="stat"><div class="k">Free</div><div class="v run" id="pxFree">0</div></div>
+        <div class="stat"><div class="k">Saturation</div><div class="v" id="pxSat">0%</div></div>
+        <div class="stat"><div class="k">Failed</div><div class="v err" id="pxDead">0</div></div>
+      </div>
+      <div class="grid-wrap">
+        <table class="grid">
+          <thead><tr>
+            <th>Endpoint</th><th>Health</th><th class="num">Latency</th>
+            <th>Assigned</th><th>Load</th><th>Note</th><th class="col-x"></th>
+          </tr></thead>
+          <tbody id="pxBody"></tbody>
+        </table>
+      </div>
+      <div class="cards" id="pxCards"></div>
+    </section>
+
+    <!-- --------------------------- COMMANDS -------------------------- -->
+    <section class="page" data-page="cmds">
+      <div class="head">
+        <h1>Aliases</h1>
+        <span class="sub" id="cmSub"></span>
+        <div class="grow"></div>
+        <div class="head-acts">
+          <button class="btn sm" id="cmSync">Sync to bots</button>
+          <button class="btn sm pri" id="btnAddCmd">New alias</button>
+        </div>
+      </div>
+      <div class="grid-wrap">
+        <table class="grid">
+          <thead><tr><th>Name</th><th>Command</th><th>Description</th><th class="col-x"></th></tr></thead>
+          <tbody id="cmBody"></tbody>
+        </table>
+      </div>
+      <div class="cards" id="cmCards"></div>
+      <div class="sec">Your recent broadcasts</div>
+      <div id="jobList"></div>
+    </section>
+
+    <!-- ------------------------ SCRIPT LIBRARY ----------------------- -->
+    <section class="page" data-page="library">
+      <div class="head">
+        <h1>Script library</h1>
+        <span class="sub" id="libSub">Reusable account automation</span>
+        <div class="grow"></div>
+        <div class="head-acts"><button class="btn sm pri" id="btnAddLibraryScript">New script</button></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Scripts</div><div class="v" id="libTotal">0</div></div>
+        <div class="stat"><div class="k">Enabled</div><div class="v run" id="libEnabled">0</div></div>
+        <div class="stat"><div class="k">Deployments</div><div class="v" id="libDeployments">0</div></div>
+        <div class="stat"><div class="k">Account</div><div class="v account-stat" id="libOwner">--</div></div>
+      </div>
+      <div class="workspace-intro">
+        Scripts here belong only to your account. Choose target bots and BotHive keeps their private script folders synchronized.
+      </div>
+      <div class="grid-wrap">
+        <table class="grid">
+          <thead><tr><th>Name</th><th>Type</th><th>Action</th><th>Targets</th><th>Status</th><th class="col-x"></th></tr></thead>
+          <tbody id="libBody"></tbody>
+        </table>
+      </div>
+      <div class="cards" id="libCards"></div>
+    </section>
+
+    <!-- -------------------------- SCHEDULES -------------------------- -->
+    <section class="page" data-page="schedules">
+      <div class="head">
+        <h1>Schedules</h1>
+        <span class="sub" id="schSub">Server-side start and stop actions</span>
+        <div class="grow"></div>
+        <div class="head-acts"><button class="btn sm pri" id="btnAddSchedule">New schedule</button></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Pending</div><div class="v wrn" id="schPending">0</div></div>
+        <div class="stat"><div class="k">Completed</div><div class="v run" id="schDone">0</div></div>
+        <div class="stat"><div class="k">Failed</div><div class="v err" id="schFailed">0</div></div>
+        <div class="stat"><div class="k">Next action</div><div class="v" id="schNext">--</div></div>
+      </div>
+      <div class="schedule-scroll">
+        <div class="schedule-list" id="scheduleList"></div>
+      </div>
+    </section>
+
+    <!-- ---------------------------- USERS ---------------------------- -->
+    <section class="page" data-page="users">
+      <div class="head">
+        <h1>Users</h1>
+        <span class="sub" id="usSub"></span>
+        <div class="grow"></div>
+        <div class="head-acts"><button class="btn sm pri" id="btnAddUser">New user</button></div>
+      </div>
+      <div class="grid-wrap">
+        <table class="grid">
+          <thead><tr><th>User</th><th>Role</th><th>Ownership</th><th>Created</th><th class="col-x"></th></tr></thead>
+          <tbody id="usBody"></tbody>
+        </table>
+      </div>
+      <div class="cards" id="usCards"></div>
+    </section>
+
+    <!-- --------------------------- ACCOUNT --------------------------- -->
+    <section class="page" data-page="account">
+      <div class="head">
+        <h1>Account settings</h1>
+        <span class="sub">Personal workspace preferences</span>
+      </div>
+      <div class="account-scroll">
+        <div class="account-grid">
+          <section class="panel-block account-identity">
+            <div class="panel-block-head"><h2>Profile</h2><span class="pill" id="acctRole">user</span></div>
+            <div class="account-person">
+              <div class="account-avatar" id="acctAvatar">BH</div>
+              <div><strong id="acctEmail">--</strong><small id="acctSince">Member</small></div>
+            </div>
+            <form id="accountForm" class="form account-form">
+              <div class="fld"><label for="acctLogin">Username or email</label><input id="acctLogin" autocomplete="username"></div>
+              <div class="fld"><label for="acctPassword">New password</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current"></div>
+              <button class="btn pri" type="submit">Update account</button>
+            </form>
+          </section>
+
+          <section class="panel-block">
+            <div class="panel-block-head"><h2>Panel preferences</h2><span id="prefsSaved" class="save-state"></span></div>
+            <form id="prefsForm" class="form two prefs-form">
+              <div class="fld"><label for="prefTheme">Theme</label><select id="prefTheme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></div>
+              <div class="fld"><label for="prefDensity">Density</label><select id="prefDensity"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></div>
+              <div class="fld"><label for="prefStart">Start page</label><select id="prefStart"><option value="overview">Overview</option><option value="bots">Bot console</option><option value="proxies">Network</option><option value="commands">Aliases</option><option value="schedules">Schedules</option><option value="account">Account</option></select></div>
+              <div class="fld"><label for="prefSidebar">Sidebar</label><select id="prefSidebar"><option value="expanded">Expanded</option><option value="collapsed">Collapsed</option></select></div>
+              <label class="setting-toggle span"><span><b>Confirm destructive actions</b><small>Ask before deleting bots, aliases, scripts, or users.</small></span><input id="prefConfirm" type="checkbox"></label>
+              <label class="setting-toggle span"><span><b>Automatic refresh</b><small>Keep jobs and schedules current while their page is open.</small></span><input id="prefRefresh" type="checkbox"></label>
+              <button class="btn pri span" type="submit">Save preferences</button>
+            </form>
+          </section>
+
+          <section class="panel-block account-automation">
+            <div class="panel-block-head"><h2>Workspace ownership</h2></div>
+            <div class="ownership-grid">
+              <button type="button" data-go="cmds"><b id="acctAliasCount">0</b><span>Private aliases</span><small>Synced only to your bots</small></button>
+              <button type="button" data-go="library"><b id="acctScriptCount">0</b><span>Library scripts</span><small>Reusable across owned bots</small></button>
+              <button type="button" data-go="proxies"><b id="acctProxyCount">0</b><span>Private proxies</span><small>Credentials stay isolated</small></button>
+              <button type="button" data-go="fleet"><b id="acctBotCount">0</b><span>Owned bots</span><small>Separate runtime data</small></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bulk action bar -->
+  <div id="bar">
+    <span class="sel-n" id="selCount">0 selected</span>
+    <div class="bar-sep"></div>
+    <button class="btn sm" data-bulk="start">Start</button>
+    <button class="btn sm" data-bulk="stop">Stop</button>
+    <button class="btn sm" data-bulk="restart">Restart</button>
+    <button class="btn sm" data-bulk="cmd">Command…</button>
+    <button class="btn sm danger" data-bulk="delete">Delete</button>
+    <div class="bar-sep"></div>
+    <button class="btn sm" data-bulk="clear">Clear</button>
+    <div class="grow"></div>
+    <div class="sse"><span class="dot" id="sseDot"></span><span id="sseTxt">connecting</span></div>
+  </div>
+
+  <!-- Bottom nav (mobile) -->
+  <nav id="nav" aria-label="Primary">
+    <button class="nav-btn" data-nav="fleet"><span class="rail-badge" id="nFleetM">0</span><span class="lbl">Fleet</span></button>
+    <button class="nav-btn" data-nav="bots"><span class="lbl">Bot</span></button>
+    <button class="nav-btn" data-nav="proxies"><span class="rail-badge" id="nProxM">0</span><span class="lbl">Proxies</span></button>
+    <button class="nav-btn" data-nav="cmds"><span class="lbl">Cmds</span></button>
+    <button class="nav-btn" data-nav="library"><span class="lbl">Scripts</span></button>
+    <button class="nav-btn" data-nav="schedules"><span class="lbl">Schedule</span></button>
+    <button class="nav-btn" data-nav="users"><span class="lbl">Users</span></button>
+    <button class="nav-btn" data-nav="account"><span class="lbl">Account</span></button>
+  </nav>
+</div>
+
+<button id="fabMass"><span class="lbl">Mass command</span><span class="n" id="fabCount">0</span></button>
+
+<div class="veil" id="veil"><div id="veilHost"></div></div>
+
+<div class="veil" id="palVeil">
+  <div class="pal">
+    <input id="palInput" placeholder="Search bots, pages, actions…" autocomplete="off" aria-label="Command palette">
+    <div class="pal-list" id="palList"></div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script src="/assets/scripts/core.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/fleet.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/bot-detail.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/resources.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/dialogs.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/schedules.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/admin.js?v=20260814-4" defer></script>
+<script src="/assets/scripts/workspace.js?v=20260815-1" defer></script>
+<script src="/assets/scripts/actions.js?v=20260814-4" defer></script>
+
+</body>
+</html>

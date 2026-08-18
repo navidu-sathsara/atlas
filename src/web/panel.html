@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BananaMoney — Payout Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0b0d;
+      --bg-soft: #111114;
+      --panel: rgba(22, 22, 28, 0.72);
+      --stroke: rgba(255, 215, 0, 0.14);
+      --stroke-strong: rgba(255, 215, 0, 0.32);
+      --gold: #FFD700;
+      --gold-dim: #caa300;
+      --text: #f5f0e1;
+      --muted: #8a857a;
+      --danger: #ff4d4d;
+      --ok: #7CFF9A;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Bricolage Grotesque', sans-serif;
+      min-height: 100vh;
+    }
+
+    body {
+      background:
+        radial-gradient(800px 400px at 10% -10%, rgba(255, 215, 0, 0.08), transparent 60%),
+        radial-gradient(600px 400px at 110% 10%, rgba(255, 80, 0, 0.06), transparent 60%),
+        linear-gradient(#0b0b0d, #060607);
+      background-attachment: fixed;
+      padding: 40px 24px 80px;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin: 0;
+      line-height: 0.95;
+    }
+
+    h1 .banana {
+      color: var(--gold);
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-top: 8px;
+      letter-spacing: 0.02em;
+      font-size: 14px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 12px var(--ok);
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .live {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 22px 22px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.10), transparent 40%);
+    }
+
+    .card .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+    }
+
+    .card .value {
+      font-size: 36px;
+      font-weight: 800;
+      margin-top: 10px;
+      letter-spacing: -0.02em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .card .foot {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .card.gold .value {
+      color: var(--gold);
+    }
+
+    .card.ok .value {
+      color: var(--ok);
+    }
+
+    .panel {
+      margin-top: 36px;
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      padding: 28px 28px 24px;
+      backdrop-filter: blur(18px);
+    }
+
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .panel .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 14px;
+      align-items: end;
+    }
+
+    .row-pay {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr auto;
+      gap: 14px;
+      align-items: end;
+    }
+
+    @media (max-width: 720px) {
+
+      .row,
+      .row-pay {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .field input {
+      width: 100%;
+      background: #0e0e11;
+      color: var(--text);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .field input:focus {
+      border-color: var(--stroke-strong);
+      box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.08);
+    }
+
+    .btn {
+      background: var(--gold);
+      color: #0b0b0d;
+      border: 0;
+      font-weight: 800;
+      padding: 14px 22px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: transform .1s, background .15s, box-shadow .2s;
+      box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(255, 215, 0, 0.25);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--stroke);
+      font-weight: 600;
+      box-shadow: none;
+      padding: 10px 16px;
+      font-size: 12px;
+    }
+
+    .btn.ghost:hover {
+      color: var(--text);
+      border-color: var(--stroke-strong);
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn.danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(255, 77, 77, 0.35);
+      box-shadow: none;
+      padding: 10px 16px;
+      font-size: 12px;
+    }
+
+    .btn.danger:hover {
+      background: rgba(255, 77, 77, 0.08);
+      transform: none;
+      box-shadow: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 215, 0, 0.03);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      background: rgba(124, 255, 154, 0.12);
+      color: var(--ok);
+      border: 1px solid rgba(124, 255, 154, 0.25);
+    }
+
+    .tag.src-admin {
+      background: rgba(255, 215, 0, 0.1);
+      color: var(--gold);
+      border-color: rgba(255, 215, 0, 0.3);
+    }
+
+    .tag.src-discord {
+      background: rgba(126, 150, 255, 0.1);
+      color: #8ea5ff;
+      border-color: rgba(126, 150, 255, 0.3);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #111;
+      border: 1px solid var(--stroke-strong);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all .3s;
+      pointer-events: none;
+      font-family: 'JetBrains Mono', monospace;
+      z-index: 50;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.err {
+      border-color: rgba(255, 77, 77, 0.4);
+      color: var(--danger);
+    }
+
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Login & password-change overlays */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 100;
+      background:
+        radial-gradient(800px 400px at 10% -10%, rgba(255, 215, 0, 0.08), transparent 60%),
+        radial-gradient(600px 400px at 110% 10%, rgba(255, 80, 0, 0.06), transparent 60%),
+        rgba(6, 6, 7, 0.92);
+      backdrop-filter: blur(6px);
+    }
+
+    .login-card {
+      width: min(440px, 92vw);
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      padding: 30px 30px 26px;
+      backdrop-filter: blur(18px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.10), transparent 40%);
+    }
+
+    .login-card h2 {
+      margin: 0 0 6px;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .login-card h2 .banana {
+      color: var(--gold);
+    }
+
+    .login-card .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 22px;
+    }
+
+    .bootstrap {
+      border: 1px dashed var(--stroke-strong);
+      background: rgba(255, 215, 0, 0.06);
+      color: var(--gold);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-bottom: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    .err-line {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 10px;
+      min-height: 18px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .stack>*+* {
+      margin-top: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="login-overlay" class="overlay">
+    <div class="login-card">
+      <h2><span class="banana">Banana</span>Money</h2>
+      <div class="hint" id="login-hint">Sign in to the payout admin panel.</div>
+
+      <div id="bootstrap-notice" class="bootstrap hidden">
+        FIRST-RUN · This password will become the new admin password.
+      </div>
+
+      <div class="stack">
+        <div class="field">
+          <label>Admin Password</label>
+          <input id="login-pwd" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <div class="err-line" id="login-err"></div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="btn" id="login-btn">Sign in →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGE-PASSWORD OVERLAY -->
+  <div id="pwd-overlay" class="overlay hidden">
+    <div class="login-card">
+      <h2>Change password</h2>
+      <div class="hint">All other active sessions will be invalidated.</div>
+      <div class="stack">
+        <div class="field">
+          <label>Current password</label>
+          <input id="pwd-cur" type="password" autocomplete="current-password" />
+        </div>
+        <div class="field">
+          <label>New password (min 6 chars)</label>
+          <input id="pwd-new" type="password" autocomplete="new-password" />
+        </div>
+        <div class="err-line" id="pwd-err"></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button class="btn ghost" id="pwd-cancel">Cancel</button>
+          <button class="btn" id="pwd-save">Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="wrap hidden">
+    <header>
+      <div>
+        <h1><span class="banana">Banana</span>Money</h1>
+        <div class="sub">Payout admin panel — manage your giveaway pool in real time.</div>
+      </div>
+      <div>
+        <div class="live"><span class="dot"></span><span id="live-status">Connected · Live</span></div>
+        <div class="header-actions">
+          <button class="btn ghost" id="btn-change-pwd">Change password</button>
+          <button class="btn danger" id="btn-logout">Log out</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card gold">
+        <div class="label">Pool Balance</div>
+        <div class="value" id="stat-balance">—</div>
+        <div class="foot" id="stat-balance-raw">raw: —</div>
+      </div>
+      <div class="card">
+        <div class="label">Per-User Payout</div>
+        <div class="value" id="stat-amount">—</div>
+        <div class="foot" id="stat-amount-raw">raw: —</div>
+      </div>
+      <div class="card ok">
+        <div class="label">Total Paid</div>
+        <div class="value" id="stat-paid">—</div>
+        <div class="foot"><span id="stat-claims">0</span> successful claims</div>
+      </div>
+      <div class="card">
+        <div class="label">Claims Remaining</div>
+        <div class="value" id="stat-remaining">—</div>
+        <div class="foot">at current payout amount</div>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2>Configure Pool</h2>
+      <div class="hint">Updates push to the Discord bot and all open panels instantly.</div>
+      <div class="row">
+        <div class="field">
+          <label>New Balance (raw number)</label>
+          <input id="in-balance" type="text" placeholder="e.g. 1000000000" />
+        </div>
+        <div class="field">
+          <label>Payout per user</label>
+          <input id="in-amount" type="text" placeholder="e.g. 50M or 1.5B" />
+        </div>
+        <button class="btn" id="btn-update">Update</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Pay Directly</h2>
+      <div class="hint">Send money in-game to any Minecraft user instantly. Debits the pool — bypasses the Discord claim
+        flow.</div>
+      <div class="row-pay">
+        <div class="field">
+          <label>Minecraft username</label>
+          <input id="pay-user" type="text" maxlength="16" placeholder="e.g. PlayerName" />
+        </div>
+        <div class="field">
+          <label>Amount</label>
+          <input id="pay-amount" type="text" placeholder="e.g. 50M, 1.5B, 1000000" />
+        </div>
+        <button class="btn" id="btn-pay">💸 Send Payment</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Claims</h2>
+      <div class="hint">Most recent first. Source tag shows whether it came from the Discord flow or a direct admin
+        payment.</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Source</th>
+            <th>Discord</th>
+            <th>Minecraft</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="claims-body">
+          <tr>
+            <td colspan="6" style="color:var(--muted); text-align:center; padding:24px;">No claims yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="footer">🍌 BananaMoney Lite · built with mineflayer + discord.js</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function fmt(n) {
+      n = Number(n) || 0;
+      if (n >= 1e9) return (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 2).replace(/\.00$/, '') + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 2).replace(/\.00$/, '') + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(n % 1e3 === 0 ? 0 : 2).replace(/\.00$/, '') + 'K';
+      return String(n);
+    }
+
+    function parseAmount(s) {
+      const m = String(s).trim().match(/^([\d,.]+)\s*([kKmMbB])?$/);
+      if (!m) return null;
+      let n = parseFloat(m[1].replace(/,/g, ''));
+      if (isNaN(n)) return null;
+      const suf = (m[2] || '').toLowerCase();
+      if (suf === 'k') n *= 1e3; else if (suf === 'm') n *= 1e6; else if (suf === 'b') n *= 1e9;
+      return Math.floor(n);
+    }
+
+    function toast(msg, isErr = false) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.toggle('err', isErr);
+      t.classList.add('show');
+      clearTimeout(window.__tt);
+      window.__tt = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (ch) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+      ));
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        ...opts
+      });
+      let data = null;
+      try { data = await res.json(); } catch (_) { data = null; }
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    function render(state) {
+      const bal = state.balance || 0;
+      const amtRaw = parseAmount(state.payoutAmount) || 0;
+      const remaining = amtRaw > 0 ? Math.floor(bal / amtRaw) : 0;
+
+      $('stat-balance').textContent = fmt(bal);
+      $('stat-balance-raw').textContent = 'raw: ' + bal.toLocaleString();
+      $('stat-amount').textContent = state.payoutAmount || '—';
+      $('stat-amount-raw').textContent = 'raw: ' + amtRaw.toLocaleString();
+      $('stat-paid').textContent = fmt(state.totalPaid || 0);
+      $('stat-claims').textContent = (state.claims || []).length;
+      $('stat-remaining').textContent = remaining.toLocaleString();
+
+      if (document.activeElement?.id !== 'in-balance') $('in-balance').value = bal;
+      if (document.activeElement?.id !== 'in-amount') $('in-amount').value = state.payoutAmount || '';
+
+      const body = $('claims-body');
+      const claims = (state.claims || []).slice().reverse();
+      if (!claims.length) {
+        body.innerHTML = '<tr><td colspan="6" style="color:var(--muted); text-align:center; padding:24px;">No claims yet.</td></tr>';
+      } else {
+        body.innerHTML = claims.slice(0, 100).map(c => {
+          const t = new Date(c.timestamp).toLocaleString();
+          const src = c.source === 'admin'
+            ? '<span class="tag src-admin">ADMIN</span>'
+            : '<span class="tag src-discord">DISCORD</span>';
+          return '<tr>' +
+            '<td>' + escapeHtml(t) + '</td>' +
+            '<td>' + src + '</td>' +
+            '<td>' + escapeHtml(c.discordTag || c.discordId || '—') + '</td>' +
+            '<td>' + escapeHtml(c.mcUsername || '') + '</td>' +
+            '<td>' + escapeHtml(String(c.amount || '')) + '</td>' +
+            '<td><span class="tag">PAID</span></td>' +
+            '</tr>';
+        }).join('');
+      }
+    }
+
+    // ── Auth flow ────────────────────────────────────────────────
+    let es = null;
+
+    async function checkAuth() {
+      const { data } = await api('/api/me');
+      if (data && data.authenticated) {
+        showApp();
+      } else {
+        showLogin(data && data.bootstrap);
+      }
+    }
+
+    function showLogin(bootstrap) {
+      $('app').classList.add('hidden');
+      $('login-overlay').classList.remove('hidden');
+      $('bootstrap-notice').classList.toggle('hidden', !bootstrap);
+      $('login-hint').textContent = bootstrap
+        ? 'No admin password is set yet — the one you enter below becomes it.'
+        : 'Sign in to the payout admin panel.';
+      setTimeout(() => $('login-pwd').focus(), 50);
+    }
+
+    function showApp() {
+      $('login-overlay').classList.add('hidden');
+      $('app').classList.remove('hidden');
+      refresh();
+      connectSSE();
+    }
+
+    async function doLogin() {
+      const pwd = $('login-pwd').value;
+      $('login-err').textContent = '';
+      if (!pwd || pwd.length < 6) { $('login-err').textContent = 'Password must be at least 6 characters.'; return; }
+      const { ok, data } = await api('/api/login', { method: 'POST', body: JSON.stringify({ password: pwd }) });
+      if (!ok) { $('login-err').textContent = (data && data.error) || 'Login failed.'; return; }
+      $('login-pwd').value = '';
+      toast(data && data.bootstrap ? 'Password set · signed in' : 'Signed in ✓');
+      showApp();
+    }
+
+    $('login-btn').addEventListener('click', doLogin);
+    $('login-pwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+    $('btn-logout').addEventListener('click', async () => {
+      await api('/api/logout', { method: 'POST' });
+      if (es) { try { es.close(); } catch (_) { } es = null; }
+      toast('Signed out');
+      checkAuth();
+    });
+
+    // Change-password modal
+    $('btn-change-pwd').addEventListener('click', () => {
+      $('pwd-cur').value = ''; $('pwd-new').value = ''; $('pwd-err').textContent = '';
+      $('pwd-overlay').classList.remove('hidden');
+      setTimeout(() => $('pwd-cur').focus(), 50);
+    });
+    $('pwd-cancel').addEventListener('click', () => $('pwd-overlay').classList.add('hidden'));
+    $('pwd-save').addEventListener('click', async () => {
+      const currentPassword = $('pwd-cur').value;
+      const newPassword = $('pwd-new').value;
+      $('pwd-err').textContent = '';
+      if (!newPassword || newPassword.length < 6) { $('pwd-err').textContent = 'New password must be at least 6 characters.'; return; }
+      const { ok, data, status } = await api('/api/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      if (status === 401 && (!data || !data.error)) { checkAuth(); return; }
+      if (!ok) { $('pwd-err').textContent = (data && data.error) || 'Failed to update password.'; return; }
+      $('pwd-overlay').classList.add('hidden');
+      toast('Password updated ✓');
+    });
+
+    // ── Data / SSE ───────────────────────────────────────────────
+    async function refresh() {
+      const { ok, status, data } = await api('/api/data');
+      if (status === 401) { checkAuth(); return; }
+      if (ok && data) render(data);
+    }
+
+    function connectSSE() {
+      try { es = new EventSource('/api/events'); } catch (err) { return; }
+      es.onmessage = (ev) => {
+        try {
+          render(JSON.parse(ev.data));
+          $('live-status').textContent = 'Connected · Live';
+        } catch (err) { }
+      };
+      es.onerror = () => {
+        $('live-status').textContent = 'Reconnecting…';
+        try { es.close(); } catch (err) { }
+        setTimeout(() => { checkAuth(); }, 2000);
+      };
+    }
+
+    // ── Pool update ──────────────────────────────────────────────
+    $('btn-update').addEventListener('click', async () => {
+      const balance = Number($('in-balance').value);
+      const payoutAmount = $('in-amount').value.trim();
+      if (isNaN(balance) || balance < 0) return toast('Invalid balance', true);
+      if (!parseAmount(payoutAmount)) return toast('Invalid payout amount (use e.g. 50M)', true);
+      const { ok, data, status } = await api('/api/update', {
+        method: 'POST',
+        body: JSON.stringify({ balance, payoutAmount })
+      });
+      if (status === 401) { checkAuth(); return; }
+      if (!ok) return toast('Update failed: ' + ((data && data.error) || 'unknown'), true);
+      toast('Updated live ✓');
+      if (data && data.data) render(data.data);
+    });
+
+    // ── Direct pay ───────────────────────────────────────────────
+    $('btn-pay').addEventListener('click', async () => {
+      const mcUsername = $('pay-user').value.trim();
+      const amount = $('pay-amount').value.trim();
+      if (!mcUsername) return toast('Minecraft username required', true);
+      if (!parseAmount(amount)) return toast('Invalid amount (e.g. 50M, 1.5B)', true);
+      if (!confirm(`Send ${amount} to "${mcUsername}" in-game now?`)) return;
+
+      const btn = $('btn-pay');
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = 'Sending…';
+      try {
+        const { ok, data, status } = await api('/api/pay-direct', {
+          method: 'POST',
+          body: JSON.stringify({ mcUsername, amount })
+        });
+        if (status === 401) { checkAuth(); return; }
+        if (!ok) return toast((data && data.error) || 'Payment failed', true);
+        toast('Paid ' + amount + ' → ' + mcUsername + ' ✓');
+        $('pay-user').value = '';
+        $('pay-amount').value = '';
+        if (data && data.data) render(data.data);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
+    });
+
+    // Boot
+    checkAuth();
+  </script>
+</body>
+
+</html>
