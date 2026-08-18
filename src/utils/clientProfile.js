@@ -65,6 +65,15 @@ function resolveProfile(config) {
         };
     }
 
+    // AFK fleets do not need a normal player's chunk radius. The previous
+    // profile silently advertised 8 chunks even though createBot requested 2,
+    // making every idle worker parse up to 289 loaded chunks. Keep the native
+    // settings packet realistic while capping AFK workers to a 5x5 area.
+    if (config && config.afkMode === true) {
+        const afkView = Number(config.afkViewDistance ?? 2);
+        p.viewDistance = Math.max(2, Math.min(4, Number.isFinite(afkView) ? afkView : 2));
+    }
+
     return p;
 }
 

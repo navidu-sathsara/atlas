@@ -29,7 +29,7 @@ class ModuleRegistry {
     constructor(opts = {}) {
         this.modules = new Map();
         this._emitDelayMs = opts.emitDelayMs != null ? opts.emitDelayMs : 60;
-        this._pollMs = opts.pollMs != null ? opts.pollMs : 2000;
+        this._pollMs = opts.pollMs != null ? opts.pollMs : 5000;
         this._lastSignature = null;
         this._emitTimer = null;
         this._pollTimer = null;
@@ -85,7 +85,16 @@ class ModuleRegistry {
         if (mod.readOnly || !mod.start) return { ok: false, error: mod.label + ' cannot be started from the panel' };
         if (this._safe(mod, () => mod.isRunning(), false)) return { ok: true, running: true, noop: true };
         try {
-            await mod.start(opts || null);
+            // Loop modules intentionally keep their start() promise alive until
+            // stopped. Awaiting that promise made panel commands look hung.
+            // Start them in the background and report acceptance immediately.
+            const started = mod.start(opts || null);
+            if (started && typeof started.then === 'function') {
+                started.catch(err => {
+                    Logger.error('[modules] background ' + key + ': ' + err.message);
+                    this.scheduleEmit();
+                });
+            }
             this.scheduleEmit();
             return { ok: true, running: this._safe(mod, () => mod.isRunning(), true) };
         } catch (err) {
@@ -112,10 +121,10 @@ class ModuleRegistry {
         }
     }
 
-    async toggle(key) {
+    async toggle(key, opts) {
         const mod = this.modules.get(key);
         if (!mod) return { ok: false, error: 'Unknown module: ' + key };
-        return this._safe(mod, () => mod.isRunning(), false) ? this.stop(key) : this.start(key);
+        return this._safe(mod, () => mod.isRunning(), false) ? this.stop(key) : this.start(key, opts);
     }
 
     /** Best-effort stop of everything, used on quit and on disconnect. */

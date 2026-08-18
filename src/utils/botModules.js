@@ -124,6 +124,16 @@ const MODULE_CATALOG = {
         describe: 'Drops junk items on an interval',
         fields: [],
     },
+    rewardChecker: {
+        label: 'Reward Checker',
+        group: 'Maintenance',
+        describe: 'Runs a server command and reward warp on a repeating interval',
+        fields: [
+            { key: 'serverCmd', label: 'Server command', type: 'text', default: '/server boxpvp', info: 'Command sent before the reward warp' },
+            { key: 'warpCmd', label: 'Reward warp command', type: 'text', default: '/warp afk', info: 'Command sent three seconds after the server command' },
+            { key: 'interval', label: 'Interval (seconds)', type: 'number', min: 10, max: 86400, step: 5, default: 60, info: 'Time between reward checks' },
+        ],
+    },
     chatGames: {
         label: 'Chat Games',
         group: 'Maintenance',
@@ -321,6 +331,24 @@ function registerBotModules(registry, bot) {
         isRunning: run('invCleaner'),
         start: () => bot.invCleaner.start(),
         stop: () => bot.invCleaner.stop(),
+    });
+
+    registry.register({
+        key: 'rewardChecker',
+        ...cat('rewardChecker'),
+        isRunning: () => !!bot.rewardCheckerTimer,
+        start: (opts = {}) => {
+            if (opts.serverCmd) bot.config.rewardServerCmd = opts.serverCmd;
+            if (opts.warpCmd) bot.config.rewardWarpCmd = opts.warpCmd;
+            if (opts.interval != null) bot.config.rewardInterval = Number(opts.interval);
+            bot.rewardCheckerEnabled = true;
+            bot.startRewardChecker();
+        },
+        stop: () => {
+            bot.rewardCheckerEnabled = false;
+            bot.stopRewardChecker();
+        },
+        detail: () => `${bot.config.rewardServerCmd || '/server boxpvp'} → ${bot.config.rewardWarpCmd || '/warp afk'} · ${bot.config.rewardInterval || 60}s`,
     });
 
     registry.register({

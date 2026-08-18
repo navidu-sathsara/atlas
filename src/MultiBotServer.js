@@ -63,21 +63,40 @@ function persistJobs() {
 // persisted (pos/next/nextAt) so a panel restart can pick a live run back up.
 async function runJobLoop(job, ids, staggerMs) {
     try {
-        for (let i = 0; i < ids.length; i++) {
-            const id = ids[i];
+        if (!Array.isArray(job.completedBotIds)) {
+            job.completedBotIds = job.botIds.slice(0, Math.max(0, job.pos || job.done || 0));
+        }
+        const completed = new Set(job.completedBotIds);
+        const runOne = async (id) => {
+            if (completed.has(id)) return;
             const alive = liveState.bots.some(b => b.id === id);
             if (!alive) { job.skipped++; }
             else {
-                const r = sendCommand(id, job.cmd);
+                const r = await queueCommand(id, job.cmd);
                 if (r.ok) job.ok++;
+                else job.skipped++;
             }
-            job.done = Math.min(job.total, job.done + 1);
-            job.pos = i + 1;
-            if (i < ids.length - 1 && staggerMs > 0) {
-                job.next = ids[i + 1];
-                job.nextAt = Date.now() + staggerMs;
-                persistJobs();
-                await sleepMs(staggerMs);
+            completed.add(id);
+            job.completedBotIds = [...completed];
+            job.done = Math.min(job.total, completed.size);
+            job.pos = job.done;
+            persistJobs();
+        };
+
+        // With no requested stagger, fan out immediately. Each target still has
+        // its own ordered queue, so one wedged child cannot hold up 29 healthy
+        // bots while its acknowledgement timer expires.
+        if (staggerMs === 0) {
+            await Promise.all(ids.map(runOne));
+        } else {
+            for (let i = 0; i < ids.length; i++) {
+                await runOne(ids[i]);
+                if (i < ids.length - 1) {
+                    job.next = ids[i + 1];
+                    job.nextAt = Date.now() + staggerMs;
+                    persistJobs();
+                    await sleepMs(staggerMs);
+                }
             }
         }
     } catch (e) { console.error(`[jobs] ${job.id} worker error:`, e.message); }
@@ -102,7 +121,10 @@ function resumeJobs() {
             persistJobs();
             continue;
         }
-        runJobLoop(job, job.botIds.slice(job.pos || job.done), job.staggerMs || 0);
+        const completed = new Set(Array.isArray(job.completedBotIds)
+            ? job.completedBotIds
+            : job.botIds.slice(0, job.pos || job.done || 0));
+        runJobLoop(job, job.botIds.filter(id => !completed.has(id)), job.staggerMs || 0);
     }
 }
 
@@ -239,6 +261,11 @@ function saveBotsFile(data) {
 // ─── Runtime state ─────────────────────────────────────────────────────
 const runtime = new Map();          // id → { proc, status, logs[], subs:Set<res>, inventory, lastEvent }
 const globalSubs = new Set();
+// One multiplexed console stream per open browser replaces one EventSource per
+// bot. At 30+ bots the old design exhausted the browser's HTTP connection pool
+// and command POSTs could sit behind long-lived SSE requests indefinitely.
+const consoleSubs = new Set();
+let commandSequence = 0;
 // The bots roster, published once start() builds it. broadcastGlobal needs to
 // resolve a bot id → owner for events that carry only an id.
 let liveState = null;
@@ -349,7 +376,8 @@ function getBotState(id) {
     if (!runtime.has(id)) {
         runtime.set(id, {
             proc: null, status: 'stopped', logs: [], subs: new Set(),
-            inventory: null, lastEvent: null, shards: null
+            inventory: null, lastEvent: null, shards: null,
+            pendingCommands: new Map(), commandTail: Promise.resolve(), triggerState: new Map()
         });
     }
     return runtime.get(id);
@@ -463,6 +491,18 @@ function pushLog(id, line) {
     s.logs.push(entry);
     if (s.logs.length > MAX_LOG_LINES) s.logs.splice(0, s.logs.length - MAX_LOG_LINES);
     if (s.subs.size > 0) emitToBotSubs(id, { type: 'log', ...entry });
+    if (consoleSubs.size > 0) {
+        const bot = liveState && liveState.bots.find(row => row.id === id);
+        if (bot) {
+            const payload = `data: ${JSON.stringify({ type: 'log', id, ...entry })}\n\n`;
+            consoleSubs.forEach(r => {
+                try {
+                    const viewer = r._bmUserId ? users.findById(r._bmUserId) : null;
+                    if (viewer && users.canManageBot(viewer, bot)) r.write(payload);
+                } catch (_) { }
+            });
+        }
+    }
 }
 
 function updateStatus(id, status) {
@@ -526,8 +566,10 @@ function handleChildLine(state, bot, rawLine) {
         try {
             const data = JSON.parse(m[1]);
             const s = getBotState(id);
+            const wasFull = s.inventory?.empty === 0;
             s.inventory = data;
             emitToBotSubs(id, { type: 'inventory', data });
+            if (!wasFull && data?.empty === 0) dispatchAutomationTrigger(bot, 'on_inventory_full', { inventory: data });
             return;
         } catch (_) { /* fall through */ }
     }
@@ -540,6 +582,8 @@ function handleChildLine(state, bot, rawLine) {
             s.lastEvent = ev;
             emitToBotSubs(id, { type: 'event', event: ev });
             broadcastGlobal({ type: 'event', id, event: ev });
+            if (ev.type === 'spawn') dispatchAutomationTrigger(bot, 'on_spawn', ev);
+            if (ev.type === 'death') dispatchAutomationTrigger(bot, 'on_death', ev);
             if (['kicked', 'disconnected', 'death', 'crash'].includes(ev.type)) fireAlert(bot, ev);
             return;
         } catch (_) { /* fall through */ }
@@ -550,9 +594,13 @@ function handleChildLine(state, bot, rawLine) {
         try {
             const data = JSON.parse(m[1]);
             const s = getBotState(id);
+            const previous = s.shards;
             s.shards = data.shards;
             emitToBotSubs(id, { type: 'shards', shards: data.shards });
             broadcastGlobal({ type: 'shards', id, shards: data.shards });
+            if (Number.isFinite(Number(previous)) && Number(data.shards) > Number(previous)) {
+                dispatchAutomationTrigger(bot, 'on_shards_gain', { shards: data.shards, previousShards: previous, gained: Number(data.shards) - Number(previous) });
+            }
             return;
         } catch (_) { /* fall through */ }
     }
@@ -579,6 +627,39 @@ function handleChildLine(state, bot, rawLine) {
             s.modules = Array.isArray(data.modules) ? data.modules : [];
             s.modulesAt = data.ts || Date.now();
             emitToBotSubs(id, { type: 'modules', modules: mergeModuleRows(bot, s) });
+            return;
+        } catch (_) { /* fall through */ }
+    }
+
+    m = trimmed.match(/^\[COMMAND_ACK_JSON\](.+)$/);
+    if (m) {
+        try {
+            const data = JSON.parse(m[1]);
+            const pending = getBotState(id).pendingCommands.get(data.id);
+            if (pending) {
+                clearTimeout(pending.timer);
+                getBotState(id).pendingCommands.delete(data.id);
+                pending.resolve({ ok: data.ok !== false, acknowledged: true, commandId: data.id });
+            }
+            return;
+        } catch (_) { /* fall through */ }
+    }
+
+    m = trimmed.match(/^\[CHAT_JSON\](.+)$/);
+    if (m) {
+        try {
+            const data = JSON.parse(m[1]);
+            dispatchAutomationTrigger(bot, data.kind === 'whisper' ? 'on_whisper' : 'on_chat', data);
+            return;
+        } catch (_) { /* fall through */ }
+    }
+
+    m = trimmed.match(/^\[HEALTH_JSON\](.+)$/);
+    if (m) {
+        try {
+            const data = JSON.parse(m[1]);
+            getBotState(id).health = data.health;
+            dispatchAutomationTrigger(bot, 'on_health_low', data);
             return;
         } catch (_) { /* fall through */ }
     }
@@ -649,6 +730,11 @@ function startBot(state, bot) {
     proc.on('exit', (code, signal) => {
         pushLog(bot.id, `[panel] process exited (code=${code} signal=${signal || ''})`);
         s.proc = null;
+        for (const pending of s.pendingCommands.values()) {
+            clearTimeout(pending.timer);
+            pending.resolve({ ok: false, reason: 'Bot stopped before acknowledging the command' });
+        }
+        s.pendingCommands.clear();
         updateStatus(bot.id, 'stopped');
     });
     proc.on('error', (err) => pushLog(bot.id, `[panel] spawn error: ${err.message}`));
@@ -677,10 +763,79 @@ function sendCommand(id, cmd) {
     } catch (e) { return { ok: false, reason: e.message }; }
 }
 
+/**
+ * Deliver a panel command in-order and wait until the child has accepted it.
+ * Node stream backpressure is respected and each bot owns its own queue, so a
+ * busy child can never make commands for the rest of the fleet disappear.
+ */
+function queueCommand(id, cmd, timeoutMs = 8000) {
+    const s = getBotState(id);
+    const run = async () => {
+        if (!s.proc || !s.proc.stdin || s.proc.stdin.destroyed) {
+            return { ok: false, reason: 'Bot not running' };
+        }
+        const commandId = `cmd_${Date.now().toString(36)}_${(++commandSequence).toString(36)}`;
+        const result = new Promise(resolve => {
+            const timer = setTimeout(() => {
+                s.pendingCommands.delete(commandId);
+                resolve({ ok: false, reason: 'Bot did not acknowledge the command in time', commandId });
+            }, timeoutMs);
+            if (timer.unref) timer.unref();
+            s.pendingCommands.set(commandId, { resolve, timer });
+        });
+
+        const line = `__panel_cmd ${JSON.stringify({ id: commandId, cmd: String(cmd) })}\n`;
+        try {
+            const writable = s.proc.stdin.write(line);
+            pushLog(id, `[panel→bot] ${cmd}`);
+            if (!writable) {
+                await new Promise((resolve, reject) => {
+                    const onDrain = () => { cleanup(); resolve(); };
+                    const onError = (error) => { cleanup(); reject(error); };
+                    const cleanup = () => {
+                        s.proc?.stdin?.removeListener('drain', onDrain);
+                        s.proc?.stdin?.removeListener('error', onError);
+                    };
+                    s.proc.stdin.once('drain', onDrain);
+                    s.proc.stdin.once('error', onError);
+                });
+            }
+        } catch (error) {
+            const pending = s.pendingCommands.get(commandId);
+            if (pending) {
+                clearTimeout(pending.timer);
+                s.pendingCommands.delete(commandId);
+                pending.resolve({ ok: false, reason: error.message, commandId });
+            }
+        }
+        return result;
+    };
+
+    const queued = s.commandTail.catch(() => {}).then(run);
+    s.commandTail = queued.then(() => undefined, () => undefined);
+    return queued;
+}
+
 // ── Visual Automation Engine (Scratch-Style) ─────────────────────────
 const activeAutomationIntervals = new Map();
 
-async function executeAutomationOnBot(botId, automation) {
+function automationConditionMatches(params, context, state) {
+    const field = String(params.field || 'chat');
+    const operator = String(params.operator || 'contains');
+    const actual = field === 'status' ? state.status
+        : field === 'shards' ? state.shards
+            : field === 'inventory' ? (state.inventory?.empty ?? null)
+                : field === 'health' ? context.health
+                    : (context.message ?? context[field]);
+    const expected = params.value ?? '';
+    if (operator === 'equals') return String(actual ?? '').toLowerCase() === String(expected).toLowerCase();
+    if (operator === 'not_equals') return String(actual ?? '').toLowerCase() !== String(expected).toLowerCase();
+    if (operator === 'greater') return Number(actual) > Number(expected);
+    if (operator === 'less') return Number(actual) < Number(expected);
+    return String(actual ?? '').toLowerCase().includes(String(expected).toLowerCase());
+}
+
+async function executeAutomationOnBot(botId, automation, context = {}) {
     const s = getBotState(botId);
     if (!s || !s.proc) return { ok: false, reason: `Bot ${botId} is not running.` };
 
@@ -711,42 +866,56 @@ async function executeAutomationOnBot(botId, automation) {
                     const rawCmd = String(params.command || params.message || '').trim();
                     if (rawCmd) {
                         pushAutoLog(`Step ${i + 1}: Executing command: ${rawCmd}`);
-                        sendCommand(botId, rawCmd);
+                        const delivered = await queueCommand(botId, rawCmd);
+                        if (!delivered.ok) throw new Error(delivered.reason || 'Command delivery failed');
                     }
                     break;
                 }
                 case 'action_jump': {
                     pushAutoLog(`Step ${i + 1}: Executing jump`);
-                    sendCommand(botId, '!jump');
+                    const delivered = await queueCommand(botId, '!jump');
+                    if (!delivered.ok) throw new Error(delivered.reason || 'Jump delivery failed');
                     break;
                 }
                 case 'action_look': {
                     const dir = params.direction || 'random';
                     pushAutoLog(`Step ${i + 1}: Rotating view (${dir})`);
-                    sendCommand(botId, `!look ${dir}`);
+                    const delivered = await queueCommand(botId, `!look ${dir}`);
+                    if (!delivered.ok) throw new Error(delivered.reason || 'Look delivery failed');
                     break;
                 }
                 case 'action_slot': {
                     const slot = parseInt(params.slot) || 0;
                     pushAutoLog(`Step ${i + 1}: Selecting hotbar slot ${slot}`);
-                    sendCommand(botId, `!slot ${slot}`);
+                    const delivered = await queueCommand(botId, `!slot ${slot}`);
+                    if (!delivered.ok) throw new Error(delivered.reason || 'Slot delivery failed');
                     break;
                 }
                 case 'action_drop': {
                     const item = params.item ? String(params.item).trim() : '';
                     pushAutoLog(`Step ${i + 1}: Dropping item ${item || 'inventory'}`);
-                    sendCommand(botId, `!drop ${item}`);
+                    const delivered = await queueCommand(botId, `!drop ${item}`);
+                    if (!delivered.ok) throw new Error(delivered.reason || 'Drop delivery failed');
                     break;
                 }
                 case 'action_module': {
                     const modName = String(params.module || 'boxpvp').trim();
                     const action = params.action || 'start';
                     pushAutoLog(`Step ${i + 1}: Triggering module ${modName} (${action})`);
-                    sendCommand(botId, `!${modName} ${action}`);
+                    const moduleCommand = params.opts && typeof params.opts === 'object'
+                        ? `__modulecfg ${JSON.stringify({ key: modName, opts: params.opts, enabled: action !== 'stop' })}`
+                        : `!module ${modName} ${action}`;
+                    const delivered = await queueCommand(botId, moduleCommand);
+                    if (!delivered.ok) throw new Error(delivered.reason || 'Module delivery failed');
                     break;
                 }
                 case 'condition_if': {
-                    pushAutoLog(`Step ${i + 1}: Logic check (${params.field || 'chat'} ${params.operator || 'contains'} "${params.value || ''}")`);
+                    const passed = automationConditionMatches(params, context, s);
+                    pushAutoLog(`Step ${i + 1}: Condition ${passed ? 'passed' : 'failed'} (${params.field || 'chat'} ${params.operator || 'contains'} "${params.value || ''}")`);
+                    if (!passed) {
+                        pushAutoLog('Sequence stopped because the condition was false.');
+                        return { ok: true, skipped: true, logs };
+                    }
                     break;
                 }
                 case 'notification_log': {
@@ -795,11 +964,59 @@ function resolveTargetBotsForAutomation(user, automation) {
     return visibleBots;
 }
 
+const activeAutomationRuns = new Set();
+
+function triggerMatches(automation, type, context = {}) {
+    if (!automation?.enabled || automation.trigger?.type !== type) return false;
+    const params = automation.trigger.params || {};
+    if (type === 'on_chat' || type === 'on_whisper') {
+        const pattern = String(params.pattern || '').trim();
+        if (!pattern) return true;
+        const message = String(context.message || '');
+        if (params.matchType === 'exact') return message.toLowerCase() === pattern.toLowerCase();
+        if (params.matchType === 'regex') {
+            try { return new RegExp(pattern, params.ignoreCase === false ? '' : 'i').test(message); }
+            catch (_) { return false; }
+        }
+        return message.toLowerCase().includes(pattern.toLowerCase());
+    }
+    if (type === 'on_health_low') {
+        return Number(context.health) <= Number(params.healthThreshold ?? 10);
+    }
+    return true;
+}
+
+function dispatchAutomationTrigger(bot, type, context = {}) {
+    if (!bot?.ownerId) return;
+    const owner = users.findById(bot.ownerId);
+    if (!owner) return;
+    const automations = workspaces.automations(owner.id);
+    for (const automation of automations) {
+        const matched = triggerMatches(automation, type, context);
+        if (type === 'on_health_low') {
+            const state = getBotState(bot.id);
+            const edgeKey = `${automation.id}:health-low`;
+            const wasMatched = state.triggerState.get(edgeKey) === true;
+            state.triggerState.set(edgeKey, matched);
+            if (!matched || wasMatched) continue;
+        } else if (!matched) continue;
+        const targets = resolveTargetBotsForAutomation(owner, automation);
+        if (!targets.some(target => target.id === bot.id)) continue;
+        const key = `${owner.id}:${automation.id}:${bot.id}`;
+        if (activeAutomationRuns.has(key)) continue;
+        activeAutomationRuns.add(key);
+        executeAutomationOnBot(bot.id, automation, context)
+            .catch(error => pushLog(bot.id, `[automation] ${automation.name}: ${error.message}`))
+            .finally(() => activeAutomationRuns.delete(key));
+    }
+}
+
 function syncAutomationInterval(userId, automation) {
     if (!automation || !automation.id) return;
-    if (activeAutomationIntervals.has(automation.id)) {
-        clearInterval(activeAutomationIntervals.get(automation.id));
-        activeAutomationIntervals.delete(automation.id);
+    const intervalKey = `${userId}:${automation.id}`;
+    if (activeAutomationIntervals.has(intervalKey)) {
+        clearInterval(activeAutomationIntervals.get(intervalKey));
+        activeAutomationIntervals.delete(intervalKey);
     }
     if (automation.enabled && automation.trigger?.type === 'interval') {
         const sec = Math.max(5, Math.min(86400, parseInt(automation.trigger?.params?.intervalSec) || 60));
@@ -809,10 +1026,16 @@ function syncAutomationInterval(userId, automation) {
             const targetBots = resolveTargetBotsForAutomation(user, automation);
             targetBots.forEach(b => {
                 const s = getBotState(b.id);
-                if (s && s.proc) executeAutomationOnBot(b.id, automation).catch(() => {});
+                const runKey = `${userId}:${automation.id}:${b.id}`;
+                if (!s?.proc || activeAutomationRuns.has(runKey)) return;
+                activeAutomationRuns.add(runKey);
+                executeAutomationOnBot(b.id, automation, { trigger: 'interval' })
+                    .catch(error => pushLog(b.id, `[automation] ${automation.name}: ${error.message}`))
+                    .finally(() => activeAutomationRuns.delete(runKey));
             });
         }, sec * 1000);
-        activeAutomationIntervals.set(automation.id, timer);
+        if (timer.unref) timer.unref();
+        activeAutomationIntervals.set(intervalKey, timer);
     }
 }
 
@@ -1259,9 +1482,10 @@ async function handleHttp(req, res, state) {
             }
             if (req.method === 'DELETE') {
                 const auto = workspaces.getAutomation(user.id, id);
-                if (auto && activeAutomationIntervals.has(id)) {
-                    clearInterval(activeAutomationIntervals.get(id));
-                    activeAutomationIntervals.delete(id);
+                const intervalKey = `${user.id}:${id}`;
+                if (auto && activeAutomationIntervals.has(intervalKey)) {
+                    clearInterval(activeAutomationIntervals.get(intervalKey));
+                    activeAutomationIntervals.delete(intervalKey);
                 }
                 const result = workspaces.deleteAutomation(user.id, id);
                 return json(res, result.ok ? 200 : 404, result);
@@ -1276,11 +1500,10 @@ async function handleHttp(req, res, state) {
             if (!targetBots.length) {
                 return json(res, 400, { ok: false, reason: 'No target bots available or matching criteria.' });
             }
-            const executionResults = [];
-            for (const b of targetBots) {
+            const executionResults = await Promise.all(targetBots.map(async (b) => {
                 const resBot = await executeAutomationOnBot(b.id, auto);
-                executionResults.push({ botId: b.id, ...resBot });
-            }
+                return { botId: b.id, ...resBot };
+            }));
             return json(res, 200, { ok: true, count: targetBots.length, results: executionResults });
         }
 
@@ -1830,7 +2053,7 @@ async function handleHttp(req, res, state) {
 
     // ── Batch Minecraft Username Checker ─────────────────────────
     if (req.method === 'POST' && p === '/api/check-usernames') {
-        const body = await parseJson(req);
+        const body = await readJson(req);
         const names = Array.isArray(body.names) ? body.names.slice(0, 100) : [];
         const results = {};
 
@@ -2227,7 +2450,8 @@ async function handleHttp(req, res, state) {
         if (req.method === 'POST' && sub === 'cmd') {
             const body = await readJson(req);
             if (!body.cmd) return json(res, 400, { ok: false, reason: 'cmd required' });
-            return json(res, 200, sendCommand(id, String(body.cmd)));
+            const result = await queueCommand(id, String(body.cmd));
+            return json(res, result.ok ? 200 : 503, result);
         }
         if (req.method === 'POST' && sub === 'inventory/refresh') {
             const r = sendCommand(id, '!inventory');
@@ -2386,6 +2610,22 @@ async function handleHttp(req, res, state) {
         globalSubs.add(res);
         const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) { } }, 25000);
         req.on('close', () => { clearInterval(ping); globalSubs.delete(res); });
+        return;
+    }
+
+    // Multiplexed live logs for the React console grid. One connection carries
+    // every visible bot and payloads remain tenant-filtered in pushLog().
+    if (req.method === 'GET' && p === '/api/console-events') {
+        const user = currentUser(req);
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive', 'X-Accel-Buffering': 'no'
+        });
+        res._bmUserId = user.id;
+        res.write(`data: ${JSON.stringify({ type: 'ready' })}\n\n`);
+        consoleSubs.add(res);
+        const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) { } }, 25000);
+        req.on('close', () => { clearInterval(ping); consoleSubs.delete(res); });
         return;
     }
 
@@ -2584,8 +2824,9 @@ function mergeModuleRows(bot, s) {
             savedOpts: (cfg && cfg.opts) || null,
         });
     }
-    if (!rows.length) {
-        for (const key of Object.keys(MODULE_CATALOG)) {
+    const reportedKeys = new Set(rows.map(row => row.key));
+    for (const key of Object.keys(MODULE_CATALOG)) {
+        if (reportedKeys.has(key)) continue;
             const e = MODULE_CATALOG[key];
             const cfg = saved[key];
             const row = {
@@ -2605,9 +2846,8 @@ function mergeModuleRows(bot, s) {
                 row.detail = parts.length ? parts.join(' + ') : 'disarmed';
             }
             rows.push(row);
-        }
-        rows.sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
     }
+    rows.sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
     return rows;
 }
 
@@ -2618,6 +2858,11 @@ async function start(port = 3123) {
     liveState = state;
     resumeJobs();
     startScheduleWorker(state);
+    for (const account of users.list()) {
+        for (const automation of workspaces.automations(account.id)) {
+            syncAutomationInterval(account.id, automation);
+        }
+    }
 
     const server = http.createServer((req, res) => {
         handleHttp(req, res, state).catch(err => {

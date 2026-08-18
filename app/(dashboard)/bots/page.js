@@ -73,7 +73,7 @@ const defaultDeploy = {
   autoReconnect: true,
   afkMode: true,
   autoAuth: true,
-  loginPassword: 'AtlasPass123!',
+  loginPassword: '',
 };
 
 export default function BotsPage() {
@@ -424,20 +424,12 @@ export default function BotsPage() {
 
     if (!cmd || !targetBots.length) return;
     setBroadcasting(true);
-    let sent = 0;
     try {
-      await Promise.all(
-        targetBots.map(async (bot) => {
-          try {
-            await api(`/bots/${encodeURIComponent(bot.id)}/cmd`, {
-              method: 'POST',
-              body: JSON.stringify({ cmd }),
-            });
-            sent++;
-          } catch (_) {}
-        })
-      );
-      toast(`Broadcasted command to ${sent} bots`, 'success');
+      const result = await api('/mass-cmd', {
+        method: 'POST',
+        body: JSON.stringify({ cmd, botIds: targetBots.map((bot) => bot.id) }),
+      });
+      toast(`Command queued reliably for ${result.total} bot${result.total === 1 ? '' : 's'}`, 'success');
       setBroadcastCmd('');
     } catch (err) {
       toast(err.message, 'error');
@@ -1342,10 +1334,10 @@ export default function BotsPage() {
                   Shared Bot Password for Authentication
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   value={deploy.loginPassword}
                   onChange={(e) => setDeploy({ ...deploy, loginPassword: e.target.value })}
-                  placeholder="AtlasPass123!"
+                  placeholder="Enter a shared in-game password"
                   className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 font-mono text-sm font-medium text-white outline-none focus:border-white"
                   required={deploy.autoAuth}
                 />
@@ -1762,6 +1754,9 @@ function BotModules({ bot }) {
   const { toast } = useToast();
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingModule, setEditingModule] = useState(null);
+  const [moduleOpts, setModuleOpts] = useState({});
+  const [moduleBusy, setModuleBusy] = useState('');
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -1778,7 +1773,37 @@ function BotModules({ bot }) {
     load();
   }, [load]);
 
+  const openSettings = (module) => {
+    const values = {};
+    for (const field of module.fields || []) {
+      const saved = module.savedOpts?.[field.key];
+      const value = saved ?? field.default ?? '';
+      values[field.key] = Array.isArray(value) ? value.join(', ') : value;
+    }
+    setModuleOpts(values);
+    setEditingModule(module);
+  };
+
+  const saveSettings = async () => {
+    if (!editingModule) return;
+    setModuleBusy(`settings:${editingModule.key}`);
+    try {
+      const result = await api(`/bots/${encodeURIComponent(bot.id)}/modules`, {
+        method: 'POST',
+        body: JSON.stringify({ key: editingModule.key, action: 'apply', opts: moduleOpts }),
+      });
+      setModules(result.modules || modules);
+      setEditingModule(null);
+      toast(`${editingModule.label} settings saved`, 'success');
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      setModuleBusy('');
+    }
+  };
+
   const toggle = async (module) => {
+    setModuleBusy(`toggle:${module.key}`);
     try {
       const result = await api(`/bots/${encodeURIComponent(bot.id)}/modules`, {
         method: 'POST',
@@ -1787,7 +1812,10 @@ function BotModules({ bot }) {
       setModules(result.modules || modules);
       toast(`${module.label || module.key} ${module.running ? 'stopped' : 'started'}`, 'success');
     } catch (error) {
+      if (error.data?.requiresSetup && module.editable) openSettings(module);
       toast(error.message, 'error');
+    } finally {
+      setModuleBusy('');
     }
   };
 
@@ -1798,24 +1826,26 @@ function BotModules({ bot }) {
       </Panel>
     );
 
-  return (
+  return (<>
     <Panel className="overflow-hidden">
       {modules.length ? (
         <div className="divide-y divide-white/[0.06]">
           {modules.map((module) => (
-            <div key={module.key} className="flex items-center gap-4 p-5">
-              <span className="rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-white/50">
-                <Cpu className="h-4 w-4" />
+            <div key={module.key} className="flex items-center gap-4 p-5 sm:p-6">
+              <span className="rounded-xl border border-white/10 bg-white/[0.05] p-3 text-white/60">
+                <Cpu className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-white">{module.label || module.key}</h3>
-                <p className="mt-0.5 text-xs text-white/35">{module.describe || module.detail || module.group || 'Bot module'}</p>
+                <div className="flex flex-wrap items-center gap-2"><h3 className="text-[15px] font-semibold text-white">{module.label || module.key}</h3>{module.armed && <span className="rounded-full border border-white/15 bg-white/[0.07] px-2 py-0.5 text-[11px] font-semibold text-white/60">Armed</span>}<span className="text-xs text-white/35">{module.group}</span></div>
+                <p className="mt-1 text-[13px] leading-5 text-white/50">{module.describe || 'Bot module'}</p>
+                {module.detail && <p className="mt-1.5 font-mono text-xs leading-5 text-white/65">{module.detail}</p>}
                 {module.unavailable && <p className="mt-1 text-xs text-white/50">{module.unavailable}</p>}
               </div>
+              {module.editable && <Button size="sm" variant="ghost" onClick={() => openSettings(module)} aria-label={`Configure ${module.label}`}><Settings2 className="h-4 w-4" /><span className="hidden sm:inline">Settings</span></Button>}
               <button
                 role="switch"
                 aria-checked={!!module.running}
-                disabled={module.readOnly || module.unavailable}
+                disabled={module.readOnly || module.unavailable || moduleBusy === `toggle:${module.key}`}
                 onClick={() => toggle(module)}
                 className={cn(
                   'relative h-6 w-11 rounded-full border transition disabled:opacity-40',
@@ -1840,7 +1870,33 @@ function BotModules({ bot }) {
         />
       )}
     </Panel>
-  );
+    <Modal
+      open={!!editingModule}
+      onClose={() => setEditingModule(null)}
+      title={editingModule ? `${editingModule.label} settings` : 'Module settings'}
+      description={editingModule?.describe || 'Configure this module before starting it.'}
+      wide
+      footer={<><Button onClick={() => setEditingModule(null)}>Cancel</Button><Button variant="primary" loading={moduleBusy.startsWith('settings:')} onClick={saveSettings}>Save settings</Button></>}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(editingModule?.fields || []).map((field) => <label key={field.key} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
+          <span className="field-label">{field.label}</span>
+          <input
+            className="field-control text-[15px]"
+            type={field.type === 'number' ? 'number' : 'text'}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            required={field.required}
+            placeholder={field.placeholder || String(field.default ?? '')}
+            value={moduleOpts[field.key] ?? ''}
+            onChange={(event) => setModuleOpts((current) => ({ ...current, [field.key]: event.target.value }))}
+          />
+          {field.info && <span className="mt-2 block text-xs leading-5 text-white/45">{field.info}</span>}
+        </label>)}
+      </div>
+    </Modal>
+  </>);
 }
 
 function BotScripts({ bot }) {

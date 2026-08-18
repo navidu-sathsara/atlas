@@ -93,7 +93,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
 
   // Auto-Auth Mode (Cracked servers / AuthMe / nLogin)
   const [enableAuthHandshake, setEnableAuthHandshake] = useState(true);
-  const [loginPassword, setLoginPassword] = useState('AtlasPass123!');
+  const [loginPassword, setLoginPassword] = useState('');
 
   // Real-time Mojang / Premium Checker State
   const [mojangData, setMojangData] = useState({});
@@ -368,7 +368,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                 <div className="sm:col-span-2">
                   <label className="mb-1 block text-[11px] font-semibold text-white/50">Host / IP</label>
                   <input
-                    type="text"
+                    type="password"
                     value={host}
                     onChange={(e) => setHost(e.target.value)}
                     placeholder="play.bananasmp.net"
@@ -450,7 +450,7 @@ export function BatchBotGeneratorModal({ open, onClose, onGenerated }) {
                     type="text"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="AtlasPass123!"
+                    placeholder="Enter a shared in-game password"
                     className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2 font-mono text-sm font-medium text-white outline-none focus:border-white"
                     required={enableAuthHandshake}
                   />

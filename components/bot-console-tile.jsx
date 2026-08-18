@@ -15,6 +15,7 @@ import { api, cn } from '@/lib/api';
 import { botLabel, categoryOf, formatShards } from '@/lib/format';
 import { Button, StatusBadge } from '@/components/ui';
 import { useToast } from '@/components/providers';
+import { subscribeConsole } from '@/lib/console-stream';
 
 const MAX_LOGS = 300;
 
@@ -60,18 +61,7 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
       prevBotIdRef.current = bot.id;
     }
 
-    const stream = new EventSource(`/api/bots/${encodeURIComponent(bot.id)}/events`);
-    
-    stream.onopen = () => setStreamState('live');
-    stream.onerror = () => setStreamState('reconnecting');
-    
-    stream.onmessage = (event) => {
-      let payload;
-      try {
-        payload = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+    return subscribeConsole(bot.id, (payload) => {
       if (payload.type === 'snapshot') {
         const snapLogs = (payload.logs || []).slice(-MAX_LOGS).map(normalizeLog);
         setLogs((current) => {
@@ -91,9 +81,7 @@ export function BotConsoleTile({ bot, onInspect, onStatusChange }) {
       if (payload.type === 'shards') {
         setShards(payload.shards);
       }
-    };
-
-    return () => stream.close();
+    }, setStreamState);
   }, [bot?.id]);
 
   useEffect(() => {

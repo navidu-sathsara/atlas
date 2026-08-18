@@ -191,6 +191,7 @@ class BananaBot {
         // Shard emitter state (feeds the multibot panel's per-bot shard count)
         this.shardEmitterTimer = null;
         this.shardEarlyTimers = [];
+        this.afkIdleTimer = null;
 
         this.loadSystemData();
     }
@@ -324,6 +325,21 @@ class BananaBot {
             if (typeof o.interval === 'number') this.pvCandleDropper.checkInterval = o.interval;
             return;
         }
+        if (key === 'rewardChecker') {
+            const opts = this._moduleOpts(key) || {};
+            if (opts.serverCmd) this.config.rewardServerCmd = opts.serverCmd;
+            if (opts.warpCmd) this.config.rewardWarpCmd = opts.warpCmd;
+            if (opts.interval != null) this.config.rewardInterval = Number(opts.interval);
+            if (this.config.username) {
+                this.systemData.update(this.config.username, {
+                    rewardServerCmd: this.config.rewardServerCmd,
+                    rewardWarpCmd: this.config.rewardWarpCmd,
+                    rewardInterval: this.config.rewardInterval,
+                });
+            }
+            if (this.rewardCheckerTimer) this.startRewardChecker();
+            return;
+        }
         if (key === 'autoHome' && this.autoHome) this.autoHome.loadConfig();
     }
 
@@ -360,10 +376,12 @@ class BananaBot {
             if (res && !res.ok && !res.noop) Logger.error(`[modules] ${key}: ${res.error}`);
         });
         if (payload.enabled === true) {
+            this._wakeForModule(key);
             if (!wasRunning) attempt(this.moduleRegistry.start(key, this._moduleOpts(key)));
             else Logger.system(`${row.label}: already running.`);
         } else if (payload.enabled === false) {
             if (wasRunning) attempt(this.moduleRegistry.stop(key));
+            this._scheduleAfkIdle();
         } else if (payload.opts && wasRunning) {
             // Settings change on a running module: restart it on the new config.
             Logger.system(`🔄 ${key}: restarting with new settings.`);
@@ -387,6 +405,7 @@ class BananaBot {
             const row = rows.find(r => r.key === key);
             if (row && (row.running || row.readOnly || row.unavailable)) continue;
             if (row && !row.canStart) continue;
+            this._wakeForModule(key);
             this.moduleRegistry.start(key, st.opts || null).then(res => {
                 if (res && res.ok && !res.noop) Logger.system(`🔄 Module "${key}" auto-started from panel config.`);
                 if (res && !res.ok) Logger.error(`[modules] auto-start ${key}: ${res.error}`);
@@ -456,6 +475,7 @@ class BananaBot {
         if (this.loginHubTimer) { clearInterval(this.loginHubTimer); this.loginHubTimer = null; }
         this.stopRewardChecker();
         this.stopShardEmitter();
+        if (this.afkIdleTimer) { clearTimeout(this.afkIdleTimer); this.afkIdleTimer = null; }
 
         const afkMode = this.config.afkMode === true;
         const profile = clientOptions(this.config);
@@ -470,7 +490,7 @@ class BananaBot {
             // and verifies Y deltas match vanilla gravity exactly. AFK mode only
             // trims the claimed view distance; it never disables physics.
             physicsEnabled: true,
-            viewDistance: afkMode ? 2 : (profile.viewDistance || 2),
+            viewDistance: profile.viewDistance || 2,
             brand: profile.brand
         };
 
@@ -506,10 +526,46 @@ class BananaBot {
     // Movement modules need physics. AFK bots spawn with physics disabled to
     // save CPU, so enable it on demand the moment a walking/mining module runs.
     _wakeForMovement() {
+        if (this.afkIdleTimer) { clearTimeout(this.afkIdleTimer); this.afkIdleTimer = null; }
         if (this.bot && this.bot.physicsEnabled === false) {
             this.bot.physicsEnabled = true;
             Logger.system('⚡ Physics enabled for movement (AFK idle paused).');
         }
+        if (this.antiStuck && !this.antiStuck.enabled) this.antiStuck.start();
+    }
+
+    _movementBusy() {
+        if (!this.bot || !this.bot.entity) return false;
+        if (this.limboFreeze?.frozen || this.isLoggingIn) return true;
+        if (this.bot.pathfinder?.isMoving?.()) return true;
+        return !!(
+            this.boneCollector?.running || this.boneDropper?.running ||
+            this.mineAndSell?.running || this.boxPvpMiner?.running ||
+            this.follower?.running || this.goTo?.running || this.fight?.running ||
+            this.tpKiller?.mode || this.crystalTrap?.running || this.autoHome?.busy
+        );
+    }
+
+    _scheduleAfkIdle(delay = 2500) {
+        if (this.config.afkMode !== true) return;
+        if (this.afkIdleTimer) clearTimeout(this.afkIdleTimer);
+        this.afkIdleTimer = setTimeout(() => {
+            this.afkIdleTimer = null;
+            if (!this.bot?.entity || this._movementBusy()) {
+                this._scheduleAfkIdle(3000);
+                return;
+            }
+            this.bot.clearControlStates?.();
+            if (this.antiStuck?.enabled) this.antiStuck.stop();
+            this.bot.physicsEnabled = false;
+            Logger.verbose('💤 AFK idle: physics and path watchdog paused.');
+        }, delay);
+        if (this.afkIdleTimer.unref) this.afkIdleTimer.unref();
+    }
+
+    _wakeForModule(key) {
+        const group = MODULE_CATALOG[key]?.group;
+        if (group && !['Maintenance', 'Integration'].includes(group)) this._wakeForMovement();
     }
 
     initModules() {
@@ -571,6 +627,7 @@ class BananaBot {
                 // Start pathfinder watchdog now that we're on the real server.
                 if (this.antiStuck && !this.antiStuck.enabled) this.antiStuck.start();
                 if (this.limboFreeze) this.limboFreeze.stop();
+                this._scheduleAfkIdle();
             }
 
             if (this.isLoggingIn) {
@@ -609,9 +666,13 @@ class BananaBot {
         const row = rows.find(r => r.key.toLowerCase() === wanted);
         if (!row) { Logger.error(`Unknown module: ${wanted}`); return; }
 
-        const result = action === 'start' ? await reg.start(row.key)
+        if (action !== 'stop') this._wakeForModule(row.key);
+        const opts = this._moduleOpts(row.key);
+        const result = action === 'start' ? await reg.start(row.key, opts)
             : action === 'stop' ? await reg.stop(row.key)
-                : await reg.toggle(row.key);
+                : await reg.toggle(row.key, opts);
+
+        if (action === 'stop' || (action === 'toggle' && !result.running)) this._scheduleAfkIdle();
 
         if (!result.ok) { Logger.error(`${row.label}: ${result.error}`); return; }
         if (result.noop) { Logger.system(`${row.label} already ${result.running ? 'ON' : 'OFF'}.`); return; }
@@ -725,10 +786,10 @@ class BananaBot {
         // populate, so sample aggressively and surface a count to the panel
         // within a few seconds instead of the first 15s poll.
         this.shardEarlyTimers = [];
-        [500, 1500, 3000, 6000, 10000].forEach((ms) => {
+        [750, 2500, 7000].forEach((ms) => {
             this.shardEarlyTimers.push(setTimeout(() => this._emitShards(), ms));
         });
-        this.shardEmitterTimer = setInterval(() => this._emitShards(), 15000);
+        this.shardEmitterTimer = setInterval(() => this._emitShards(), 30000);
     }
 
     stopShardEmitter() {
@@ -856,9 +917,17 @@ class BananaBot {
         });
 
         this.bot.on('health', () => {
-            if (this.bot?.health !== undefined && this.bot.health <= 0) {
-                emitMarker('EVENT_JSON', { type: 'death', username: this.config.username });
-            }
+            emitMarker('HEALTH_JSON', {
+                health: this.bot?.health ?? null,
+                food: this.bot?.food ?? null,
+                username: this.config.username
+            });
+        });
+
+        // Mineflayer's health event can fire more than once at zero. Use the
+        // dedicated death edge so event automations run exactly once per death.
+        this.bot.on('death', () => {
+            emitMarker('EVENT_JSON', { type: 'death', username: this.config.username });
         });
 
         this.bot.on('messagestr', (message, position) => {
@@ -870,10 +939,15 @@ class BananaBot {
                 return;
             }
             Logger.log(message, 'CHAT');
+            emitMarker('CHAT_JSON', { kind: 'chat', message: String(message || ''), position: position || 'chat' });
 
             if (!this.isLoggingIn && this.autoAuth) {
                 this.autoAuth.handleMessage(message);
             }
+        });
+
+        this.bot.on('whisper', (username, message) => {
+            emitMarker('CHAT_JSON', { kind: 'whisper', username, message: String(message || '') });
         });
 
         this.bot.on('title', (text) => {
@@ -1368,6 +1442,27 @@ class BananaBot {
                     Logger.info(`Inv: ${this.bot.inventory.items().length} items`);
                 }
                 break;
+            case 'jump':
+                if (!this.bot?.entity) { Logger.error('Bot not connected.'); break; }
+                this._wakeForMovement();
+                this.bot.setControlState('jump', true);
+                setTimeout(() => {
+                    try { this.bot?.setControlState('jump', false); } catch (_) { }
+                    this._scheduleAfkIdle();
+                }, 350);
+                break;
+            case 'slot': {
+                const slot = parseInt(args[1], 10);
+                if (isNaN(slot) || slot < 0 || slot > 8) {
+                    Logger.error('Usage: !slot <0-8>');
+                    break;
+                }
+                try {
+                    this.bot.setQuickBarSlot(slot);
+                    Logger.system(`Selected hotbar slot ${slot}.`);
+                } catch (error) { Logger.error(`Could not select slot: ${error.message}`); }
+                break;
+            }
             case 'module':
             case 'modules': await this._handleModule(args); break;
             case 'drop': await this._handleDrop(args); break;
@@ -1956,14 +2051,28 @@ class BananaBot {
 
     async _handleLook(args) {
         if (!this.bot) return;
-        if (args.length === 2) {
+        if (args[1] === 'random') {
+            this._wakeForMovement();
+            await this.bot.look((Math.random() * Math.PI * 2) - Math.PI, (Math.random() - 0.5) * 0.9, true);
+            this._scheduleAfkIdle();
+        } else if (['left', 'right', 'up', 'down'].includes(args[1])) {
+            this._wakeForMovement();
+            let yaw = this.bot.entity?.yaw || 0;
+            let pitch = this.bot.entity?.pitch || 0;
+            if (args[1] === 'left') yaw += Math.PI / 2;
+            if (args[1] === 'right') yaw -= Math.PI / 2;
+            if (args[1] === 'up') pitch = -Math.PI / 3;
+            if (args[1] === 'down') pitch = Math.PI / 3;
+            await this.bot.look(yaw, pitch, true);
+            this._scheduleAfkIdle();
+        } else if (args.length === 2) {
             const p = this.bot.players[args[1]];
             if (p?.entity) this.bot.lookAt(p.entity.position.offset(0, 1.6, 0));
             else Logger.error('Player not found.');
         } else if (args.length === 4) {
             const x = parseFloat(args[1]), y = parseFloat(args[2]), z = parseFloat(args[3]);
             this.bot.lookAt(new Vec3(x, y, z));
-        } else Logger.error('Usage: !look <player> OR !look <x y z>');
+        } else Logger.error('Usage: !look <random|left|right|up|down|player> OR !look <x y z>');
     }
 
     async _handleProfile(args) {
@@ -2123,7 +2232,18 @@ if (IS_CHILD) {
             const line = _buf.slice(0, i);
             _buf = _buf.slice(i + 1);
             const instance = BananaBot._activeInstance;
-            if (instance) instance._processInputLine(line);
+            if (!instance) continue;
+            if (line.startsWith('__panel_cmd ')) {
+                try {
+                    const payload = JSON.parse(line.slice('__panel_cmd '.length));
+                    instance._processInputLine(payload.cmd);
+                    emitMarker('COMMAND_ACK_JSON', { id: payload.id, ok: true, acceptedAt: Date.now() });
+                } catch (error) {
+                    emitMarker('COMMAND_ACK_JSON', { id: null, ok: false, reason: error.message });
+                }
+            } else {
+                instance._processInputLine(line);
+            }
         }
     });
     process.stdin.on('error', () => {});

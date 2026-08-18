@@ -5,6 +5,7 @@ import { Eraser, Send } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button, EmptyState } from '@/components/ui';
 import { useToast } from '@/components/providers';
+import { subscribeConsole } from '@/lib/console-stream';
 
 const MAX_LOGS = 1200;
 
@@ -45,12 +46,7 @@ export function BotConsole({ bot, onStatus }) {
       prevBotIdRef.current = bot.id;
     }
 
-    const stream = new EventSource(`/api/bots/${encodeURIComponent(bot.id)}/events`);
-    stream.onopen = () => setStreamState('live');
-    stream.onerror = () => setStreamState('reconnecting');
-    stream.onmessage = (event) => {
-      let payload;
-      try { payload = JSON.parse(event.data); } catch { return; }
+    return subscribeConsole(bot.id, (payload) => {
       if (payload.type === 'snapshot') {
         const snapLogs = (payload.logs || []).slice(-MAX_LOGS).map(normalizeLog);
         setLogs((current) => {
@@ -66,8 +62,7 @@ export function BotConsole({ bot, onStatus }) {
         setLogs((current) => [...current, normalizeLog(payload)].slice(-MAX_LOGS));
       }
       if (payload.type === 'status') onStatusRef.current?.(payload.status);
-    };
-    return () => stream.close();
+    }, setStreamState);
   }, [bot?.id]);
 
   useEffect(() => {

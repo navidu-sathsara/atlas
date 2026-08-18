@@ -270,7 +270,7 @@ function ShellFrame({ children }) {
       {/* Main Content Area */}
       <div
         className={cn(
-          'relative z-10 flex min-h-screen flex-col transition-all duration-300',
+          'relative z-10 flex min-h-screen min-w-0 flex-col transition-all duration-300',
           collapsed ? 'lg:pl-20' : 'lg:pl-64'
         )}
       >
@@ -303,7 +303,7 @@ function ShellFrame({ children }) {
           </button>
         </header>
 
-        <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-32 lg:p-8 lg:pb-12">{children}</main>
+        <main className="min-w-0 max-w-full flex-1 overflow-x-clip p-4 pb-28 sm:p-6 sm:pb-32 lg:p-8 lg:pb-12">{children}</main>
       </div>
 
       {/* iOS Mobile Floating Glass Bottom Tab Bar / Dock */}
